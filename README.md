@@ -1,6 +1,4 @@
-# Face_Detection_Software
-
-## Edifies School Staff Attendance Management System
+# Edifies School Attendance Management System
 
 A lightweight, enterprise-grade, server-rendered attendance product built on **PHP 8.5**, **CodeIgniter 4**, and **MariaDB 11.4**. Designed for affordable local deployment on mini-PCs or standard cPanel web hosting without requiring microservices, cloud dependencies, or heavy JavaScript runtime overhead.
 
