@@ -387,6 +387,22 @@
 
                                                 <button
                                                     type="button"
+                                                    class="btn btn-primary btn-xs"
+                                                    style="background: #0284c7; border-color: #0284c7;"
+                                                    title="Enroll Face for Automatic Scanner Recognition"
+                                                    onclick="openFaceEnrollModal('<?= esc($emp['id']) ?>', '<?= esc($emp['employee_id']) ?>', '<?= esc(addslashes($emp['full_name'])) ?>')"
+                                                >
+                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                        <circle cx="12" cy="12" r="10"></circle>
+                                                        <circle cx="9" cy="9" r="1"></circle>
+                                                        <circle cx="15" cy="9" r="1"></circle>
+                                                        <path d="M8 15s1.5 2 4 2 4-2 4-2"></path>
+                                                    </svg>
+                                                    <span>Enroll Face</span>
+                                                </button>
+
+                                                <button
+                                                    type="button"
                                                     class="btn btn-secondary btn-xs <?= ($emp['status'] === 'ACTIVE') ? 'status-toggle-deactivate' : 'status-toggle-activate' ?>"
                                                     style="<?= ($emp['status'] === 'ACTIVE') ? 'color: var(--danger); border-color: #fca5a5;' : 'color: var(--success); border-color: #86efac;' ?>"
                                                     title="<?= ($emp['status'] === 'ACTIVE') ? 'Deactivate Employee (Preserves History)' : 'Activate Employee' ?>"

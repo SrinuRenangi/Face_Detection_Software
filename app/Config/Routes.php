@@ -76,21 +76,7 @@ $routes->get('face-lab', 'Admin\FaceLabController::index', ['filter' => 'adminAu
 // 5. Attendance Kiosk Interface (Tablet-Optimized)
 $routes->get('attendance', 'AttendanceController::index');
 
-// 5b. Direct Model Binary Access Blocker (Section 4 Closure)
-$routes->add('models', static function () {
-    return service('response')->setStatusCode(404, 'Not Found')->setJSON([
-        'status'  => 'error',
-        'code'    => 'MODELS_DISTRIBUTION_DISABLED',
-        'message' => 'Direct model binary distribution is prohibited in this environment.',
-    ]);
-});
-$routes->add('models/(:any)', static function () {
-    return service('response')->setStatusCode(404, 'Not Found')->setJSON([
-        'status'  => 'error',
-        'code'    => 'MODELS_DISTRIBUTION_DISABLED',
-        'message' => 'Direct model binary distribution is prohibited in this environment.',
-    ]);
-});
+
 
 // 6. Backend API Routes
 $routes->group('api', static function ($routes) {
@@ -108,6 +94,8 @@ $routes->group('api', static function ($routes) {
         $routes->post('verify-pin', 'Api\KioskApiController::verifyPin');
         $routes->post('confirm-punch', 'Api\KioskApiController::confirmPunch');
         $routes->post('attendance/sync', 'Api\KioskApiController::syncAttendance');
+        $routes->get('face-templates', 'Api\KioskApiController::getFaceTemplates');
+        $routes->post('face-punch', 'Api\KioskApiController::facePunch');
     });
 
     // Admin API (Protected by AdminAuthFilter)
@@ -121,6 +109,7 @@ $routes->group('api', static function ($routes) {
         $routes->get('employees/(:segment)', 'Admin\EmployeeController::show/$1');
         $routes->post('employees/(:segment)/update', 'Admin\EmployeeController::update/$1', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN']);
         $routes->post('employees/(:segment)/pin', 'Admin\EmployeeController::setPin/$1', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN']);
+        $routes->post('employees/(:segment)/face-template', 'Admin\EmployeeController::enrollFace/$1', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN']);
         $routes->post('employees/(:segment)/toggle-status', 'Admin\EmployeeController::toggleStatus/$1', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN']);
         $routes->post('employees/(:segment)/delete', 'Admin\EmployeeController::delete/$1', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN']);
     });

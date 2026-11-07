@@ -497,5 +497,73 @@ class EmployeeController extends BaseController
 
         return redirect()->to('/admin/employees')->with('success', $message);
     }
+
+    /**
+     * Enrolls or updates 128-dimensional facial vector template for an employee
+     */
+    public function enrollFace(string $id)
+    {
+        if (!$this->requireAdminRole()) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status'  => 'error',
+                'message' => 'Access denied. Only Administrators can enroll face templates.',
+            ]);
+        }
+
+        $employee = $this->employeeModel->find($id);
+        if (!$employee) {
+            return $this->response->setStatusCode(404)->setJSON([
+                'status'  => 'error',
+                'message' => 'Employee not found.',
+            ]);
+        }
+
+        $json = $this->request->getJSON(true) ?? $this->request->getPost();
+        $embedding = $json['embedding'] ?? null;
+        if (!is_array($embedding) || count($embedding) !== 128) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'status'  => 'error',
+                'message' => 'Invalid facial embedding. A 128-dimensional vector is required.',
+            ]);
+        }
+
+        $qualityScore = (float) ($json['quality_score'] ?? 0.95);
+        $modelName = trim((string) ($json['model_name'] ?? 'face-api-resnet34'));
+
+        $templateModel = new \App\Models\EmployeeFaceTemplateModel();
+        
+        // Remove prior templates for this employee to maintain single authoritative template
+        $db = \Config\Database::connect();
+        $db->table('employee_face_templates')->where('employee_id', $id)->delete();
+
+        $templateId = (string) time() . '_' . bin2hex(random_bytes(6));
+        $templateModel->insert([
+            'id'                => $templateId,
+            'employee_id'       => $id,
+            'template_version'  => 'v1.0',
+            'vector_dimensions' => 128,
+            'embedding_data'    => json_encode($embedding),
+            'model_name'        => $modelName,
+            'quality_score'     => $qualityScore,
+            'registered_by'     => session()->get('admin_username') ?? 'admin',
+        ]);
+
+        $this->auditModel->log(
+            session()->get('admin_username') ?? 'admin',
+            'EMPLOYEE_FACE_ENROLLED',
+            json_encode([
+                'employee_id' => $employee['employee_id'],
+                'full_name'   => $employee['full_name'],
+                'dimensions'  => 128,
+            ]),
+            'EMPLOYEE',
+            $id
+        );
+
+        return $this->response->setJSON([
+            'status'  => 'success',
+            'message' => "Facial template successfully enrolled for {$employee['full_name']}.",
+        ]);
+    }
 }
 

@@ -339,10 +339,9 @@ class UnifiedGatewayAndScannerAccessTest extends CIUnitTestCase
     {
         $result = $this->get('/attendance');
         $result->assertStatus(200);
-        $result->assertSee('Staff Attendance Kiosk');
-        $result->assertSee('Terminal:');
-        $result->assertSee('Touchless Presence Verification System');
-        $result->assertSee('PIN Attendance');
-        $result->assertSee('Biometric Engine Staged');
+        $result->assertSee('Edifies School');
+        $result->assertSee('scanner-video');
+        $result->assertSee('scanner-status-pill');
+        $result->assertSee('Scanner is sleeping');
     }
 }

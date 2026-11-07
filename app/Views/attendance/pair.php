@@ -2,146 +2,252 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= esc($pageTitle) ?> &bull; Edifies School</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Scanner Device Pairing &bull; Edifies School</title>
     <link rel="stylesheet" href="/css/style.css">
+    <style>
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);
+            margin: 0;
+            padding: 1.5rem;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #1e293b;
+            box-sizing: border-box;
+        }
+
+        .pair-card {
+            width: 100%;
+            max-width: 440px;
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+            border: 1px solid #e2e8f0;
+            padding: 2.5rem 2.25rem 2.25rem;
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        .pair-icon {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%);
+            color: #ffffff;
+            border-radius: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+        }
+
+        .pair-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin: 0 0 0.35rem 0;
+            letter-spacing: -0.02em;
+        }
+
+        .pair-subtitle {
+            font-size: 0.875rem;
+            color: #64748b;
+            margin: 0 0 1.75rem 0;
+            line-height: 1.4;
+        }
+
+        .form-group {
+            text-align: left;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 0.5rem;
+        }
+
+        .pairing-input {
+            width: 100%;
+            padding: 0.85rem 1rem;
+            font-size: 1.05rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            text-align: center;
+            border: 2px solid #cbd5e1;
+            border-radius: 10px;
+            outline: none;
+            transition: all 0.15s ease-in-out;
+            box-sizing: border-box;
+            background: #f8fafc;
+            color: #0f172a;
+        }
+
+        .pairing-input:focus {
+            background: #ffffff;
+            border-color: #0284c7;
+            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+        }
+
+        .btn-pair {
+            width: 100%;
+            padding: 0.9rem 1.25rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #ffffff;
+            background: #0284c7;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.15s ease-in-out, transform 0.05s ease;
+            box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            box-sizing: border-box;
+        }
+
+        .btn-pair:hover {
+            background: #0369a1;
+        }
+
+        .btn-pair:active {
+            transform: scale(0.99);
+        }
+
+        .alert-error {
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #b91c1c;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 1.25rem;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .alert-already-paired {
+            background: #ecfdf5;
+            border: 1px solid #a7f3d0;
+            color: #065f46;
+            padding: 0.85rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 1.5rem;
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .btn-open-scanner {
+            display: inline-block;
+            background: #059669;
+            color: #ffffff;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-align: center;
+            transition: background 0.15s;
+        }
+
+        .btn-open-scanner:hover {
+            background: #047857;
+        }
+
+        .pair-footer {
+            margin-top: 2rem;
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+    </style>
 </head>
-<body style="background-color: var(--gray-100);">
-    <header class="navbar">
-        <div class="container nav-content">
-            <a href="/" class="brand-link">
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+<body>
+
+    <div class="pair-card">
+        <!-- Brand / Terminal Icon -->
+        <div class="pair-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+        </div>
+
+        <h1 class="pair-title">Scanner Device Pairing</h1>
+        <p class="pair-subtitle">Enter the 32-character code from Admin to pair this device</p>
+
+        <!-- Active Paired Device Status -->
+        <?php if ($isPaired && $pairedDevice): ?>
+            <div class="alert-already-paired">
+                <div style="font-weight: 600;">
+                    Device Already Paired: <?= esc($pairedDevice['device_name']) ?>
+                </div>
+                <div style="font-size: 0.8rem; color: #047857;">
+                    Identifier: <?= esc($pairedDevice['device_identifier']) ?> &bull; Mode: <?= esc($pairedDevice['terminal_mode']) ?>
+                </div>
+                <a href="/attendance" class="btn-open-scanner">Open Scanner Interface &rarr;</a>
+            </div>
+        <?php endif; ?>
+
+        <!-- Error Banner -->
+        <?php if (session()->getFlashdata('error')): ?>
+            <div class="alert-error">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
                 </svg>
-                <span>Edifies School</span>
-                <span class="brand-badge">Scanner Pairing</span>
-            </a>
-            <div class="nav-actions">
-                <a href="/attendance" class="btn btn-secondary">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                        <line x1="8" y1="21" x2="16" y2="21"></line>
-                        <line x1="12" y1="17" x2="12" y2="21"></line>
-                    </svg>
-                    <span>Launch Scanner</span>
-                </a>
-                <a href="/login" class="btn btn-secondary">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="12" cy="7" r="4"></circle>
-                    </svg>
-                    <span>Staff Sign In</span>
-                </a>
+                <span><?= esc(session()->getFlashdata('error')) ?></span>
             </div>
-        </div>
-    </header>
+        <?php endif; ?>
 
-    <div class="auth-wrapper" style="max-width: 560px;">
-        <div class="auth-card">
-            <div class="auth-header">
-                <div class="auth-icon" style="background-color: #ccfbf1; color: var(--accent);">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                        <line x1="8" y1="21" x2="16" y2="21"></line>
-                        <line x1="12" y1="17" x2="12" y2="21"></line>
-                    </svg>
-                </div>
-                <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--gray-900); margin-bottom: 0.35rem;">
-                    Scanner Device Pairing
-                </h2>
-                <p style="font-size: 0.875rem; color: var(--gray-500);">
-                    Pair this browser or mobile device as a dedicated attendance terminal
-                </p>
+        <!-- Minimalist Single-Field Pairing Form -->
+        <form action="/kiosk/pair" method="POST">
+            <?= csrf_field() ?>
+
+            <div class="form-group">
+                <label for="pairing_code" class="form-label">Single-Use Pairing Code</label>
+                <input
+                    type="text"
+                    id="pairing_code"
+                    name="pairing_code"
+                    class="pairing-input"
+                    value="<?= esc(old('pairing_code')) ?>"
+                    placeholder="ENTER 32-CHAR CODE"
+                    maxlength="40"
+                    required
+                    autofocus
+                    autocomplete="off"
+                    autocorrect="off"
+                    autocapitalize="characters"
+                    spellcheck="false"
+                >
             </div>
 
-            <!-- Error Banner -->
-            <?php if (session()->getFlashdata('error')): ?>
-                <div class="alert alert-danger">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="8" x2="12" y2="12"></line>
-                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                    </svg>
-                    <span><?= esc(session()->getFlashdata('error')) ?></span>
-                </div>
-            <?php endif; ?>
-
-            <!-- Success Banner -->
-            <?php if (session()->getFlashdata('success')): ?>
-                <div class="alert alert-success">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                    <span><?= esc(session()->getFlashdata('success')) ?></span>
-                </div>
-            <?php endif; ?>
-
-            <?php if ($isPaired && $pairedDevice): ?>
-                <div class="alert alert-success" style="display: block; margin-bottom: 1.5rem;">
-                    <div style="font-weight: 700; margin-bottom: 0.25rem;">
-                        Device Already Paired &amp; Active
-                    </div>
-                    <div style="font-size: 0.85rem;">
-                        This browser is currently authorized as: <strong><?= esc($pairedDevice['device_name']) ?></strong> (<?= esc($pairedDevice['device_identifier']) ?>). Mode: <strong><?= esc($pairedDevice['terminal_mode']) ?></strong>.
-                    </div>
-                    <div style="margin-top: 0.75rem;">
-                        <a href="/attendance" class="btn btn-accent btn-sm">Open Scanner Interface &rarr;</a>
-                    </div>
-                </div>
-            <?php endif; ?>
-
-            <form action="/kiosk/pair" method="POST">
-                <?= csrf_field() ?>
-
-                <div class="form-group">
-                    <label for="pairing_code" class="form-label">
-                        Single-Use Pairing Code
-                        <span style="font-weight: 400; color: var(--gray-500);">(from Admin &gt; Kiosks)</span>
-                    </label>
-                    <input type="text" id="pairing_code" name="pairing_code" class="form-input"
-                           value="<?= esc(old('pairing_code')) ?>"
-                           placeholder="e.g. A1B2C3D4E5F60718A1B2C3D4E5F60718"
-                           maxlength="40" required autofocus autocomplete="off" autocorrect="off" autocapitalize="characters"
-                           style="letter-spacing: 0.1em; font-family: monospace; font-size: 1rem; text-transform: uppercase;">
-                    <small style="display: block; margin-top: 0.35rem; color: var(--gray-500); font-size: 0.8rem;">
-                        Paste or type the 32-character pairing code generated by the School Administrator.
-                    </small>
-                </div>
-
-                <div class="form-group">
-                    <label for="device_name" class="form-label">Device Label (Optional)</label>
-                    <input type="text" id="device_name" name="device_name" class="form-input"
-                           value="<?= esc(old('device_name')) ?>" placeholder="e.g. Front Gate Android Tablet" maxlength="64">
-                </div>
-
-                <div class="form-group">
-                    <label for="device_type" class="form-label">Device Type</label>
-                    <select id="device_type" name="device_type" class="form-input">
-                        <option value="TABLET" selected>Tablet (Mounted Wall Display)</option>
-                        <option value="SMARTPHONE">Smartphone (Mobile Scanner)</option>
-                        <option value="DESKTOP">Desktop / Laptop (Webcam)</option>
-                    </select>
-                </div>
-
-                <div style="margin-top: 1.75rem;">
-                    <button type="submit" class="btn btn-accent btn-block">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                            <line x1="8" y1="21" x2="16" y2="21"></line>
-                            <line x1="12" y1="17" x2="12" y2="21"></line>
-                        </svg>
-                        <span>Authorize &amp; Pair Scanner</span>
-                    </button>
-                </div>
-            </form>
-
-            <div style="margin-top: 1.5rem; text-align: center; border-top: 1px solid var(--gray-200); padding-top: 1rem;">
-                <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 0.5rem;">
-                    Human staff or manager?
-                </p>
-                <a href="/login" class="btn btn-secondary btn-sm">Administrator / Manager Sign In &rarr;</a>
-            </div>
-        </div>
+            <button type="submit" class="btn-pair">
+                <span>Authorize &amp; Pair Scanner</span>
+                <span>&rarr;</span>
+            </button>
+        </form>
     </div>
+
+    <div class="pair-footer">
+        &copy; <?= date('Y') ?> Edifies School &bull; Dedicated Attendance Scanner Terminal
+    </div>
+
 </body>
 </html>

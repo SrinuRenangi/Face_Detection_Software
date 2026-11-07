@@ -944,4 +944,153 @@ class KioskApiController extends ResourceController
             'message'        => $result['message'] ?? 'Attendance successfully recorded.',
         ]);
     }
+
+    /**
+     * Returns active enrolled face templates for real-time edge recognition
+     */
+    public function getFaceTemplates()
+    {
+        $device = $this->request->device ?? null;
+        if (!$device) {
+            return $this->failUnauthorized('Device authorization context not established.');
+        }
+
+        $templateModel = new \App\Models\EmployeeFaceTemplateModel();
+        $templates = $templateModel->getActiveEnrolledTemplates();
+
+        $formatted = [];
+        foreach ($templates as $t) {
+            $embedding = json_decode($t['embedding_data'], true);
+            if (!is_array($embedding) || empty($embedding)) {
+                continue;
+            }
+
+            $formatted[] = [
+                'employee_id'    => $t['employee_id'],
+                'employee_code'  => $t['employee_code'],
+                'employee_name'  => $t['full_name'],
+                'department'     => $t['department'],
+                'embedding'      => $embedding,
+            ];
+        }
+
+        return $this->respond([
+            'status'    => 'success',
+            'count'     => count($formatted),
+            'templates' => $formatted,
+        ]);
+    }
+
+    /**
+     * Real-time automated face recognition attendance punch
+     */
+    public function facePunch()
+    {
+        $device = $this->request->device ?? null;
+        if (!$device) {
+            return $this->failUnauthorized('Device authorization context not established.');
+        }
+
+        $json = $this->request->getJSON(true) ?? $this->request->getPost();
+        $employeeId = trim((string) ($json['employee_id'] ?? ''));
+        $confidence = (float) ($json['confidence'] ?? 0.0);
+        $clientUuid = trim((string) ($json['client_uuid'] ?? ''));
+
+        if (empty($employeeId)) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'status'  => 'error',
+                'message' => 'Employee ID is required.',
+            ]);
+        }
+
+        if (empty($clientUuid)) {
+            $clientUuid = (string) time() . '_' . bin2hex(random_bytes(8));
+        }
+
+        // Verify active employee
+        $employeeModel = new \App\Models\EmployeeModel();
+        $employee = $employeeModel->find($employeeId);
+        if (!$employee) {
+            $employee = $employeeModel->where('employee_id', $employeeId)->first();
+        }
+
+        if (!$employee || $employee['status'] !== 'ACTIVE') {
+            return $this->response->setStatusCode(404)->setJSON([
+                'status'  => 'error',
+                'message' => 'Active employee not found.',
+            ]);
+        }
+
+        // Handle optional captured photo frame
+        $storedPhoto = null;
+        $photoService = new \App\Services\AttendancePhotoService();
+        $photoPayload = $json['photo_payload'] ?? null;
+        if (!empty($photoPayload)) {
+            $imageBinary = null;
+            if (str_starts_with($photoPayload, 'data:image')) {
+                $parts = explode(',', $photoPayload, 2);
+                if (count($parts) === 2) {
+                    $imageBinary = base64_decode($parts[1]);
+                }
+            } else {
+                $imageBinary = base64_decode($photoPayload);
+            }
+
+            if ($imageBinary && strlen($imageBinary) >= 100) {
+                $storedPhoto = $photoService->processAndStoreSnapshot(
+                    $imageBinary,
+                    $employee['id'],
+                    $device->id,
+                    'FACIAL_SCANNER'
+                );
+            }
+        }
+
+        // Invoke AttendanceSyncService for authoritative transaction
+        $syncService = new \App\Services\AttendanceSyncService();
+        $syncPayload = [
+            'client_uuid'      => $clientUuid,
+            'employee_id'      => $employee['id'],
+            'device_id'        => $device->id,
+            'timestamp'        => date('Y-m-d H:i:s'),
+            'terminal_mode'    => $device->terminal_mode,
+            'sync_source'      => 'DIRECT_ONLINE',
+            'device_epoch_id'  => $device->device_epoch_id,
+        ];
+
+        $result = $syncService->syncEvent($syncPayload, $storedPhoto);
+
+        if (isset($result['status']) && in_array($result['status'], ['INVALID_STATE_TRANSITION', 'SEQUENCE_ANOMALY'], true)) {
+            return $this->response->setStatusCode(422)->setJSON([
+                'status'  => 'error',
+                'code'    => 'QUARANTINED',
+                'message' => $result['message'] ?? 'Attendance event quarantined due to sequence anomaly.',
+            ]);
+        }
+
+        if (isset($result['error'])) {
+            if ($storedPhoto) {
+                $photoService->deletePhysicalFile($storedPhoto['storage_path']);
+            }
+            return $this->response->setStatusCode(400)->setJSON([
+                'status'  => 'error',
+                'message' => $result['error'],
+            ]);
+        }
+
+        $eventType = $result['event_type'] ?? ($device->terminal_mode === 'EXIT_ONLY' ? 'CHECK_OUT' : 'CHECK_IN');
+        $displayAction = ($eventType === 'CHECK_OUT') ? 'Check-Out (Exit)' : 'Check-In (Entry)';
+
+        return $this->respond([
+            'status'         => 'success',
+            'sync_status'    => $result['status'],
+            'employee_id'    => $employee['employee_id'],
+            'employee_name'  => $employee['full_name'],
+            'action'         => $eventType,
+            'action_label'   => $displayAction,
+            'recorded_at'    => date('h:i:s A'),
+            'work_date'      => date('d M Y'),
+            'message'        => "Attendance recorded: {$employee['full_name']} ({$displayAction})",
+        ]);
+    }
 }
