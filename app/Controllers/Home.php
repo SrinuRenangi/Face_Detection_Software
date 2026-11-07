@@ -28,8 +28,11 @@ class Home extends BaseController
         $dbPlatform = 'MySQL/MariaDB';
 
         try {
-            $dbConnected = $db->initialize();
-            $dbPlatform = $db->getPlatform() . ' ' . $db->getVersion();
+            $db->initialize();
+            if ($db->connID) {
+                $dbConnected = true;
+                $dbPlatform = $db->getPlatform() . ' ' . $db->getVersion();
+            }
         } catch (\Throwable $e) {
             $dbConnected = false;
         }
