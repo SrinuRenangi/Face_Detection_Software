@@ -1,0 +1,76 @@
+# =====================================================================
+# EDIFIES SCHOOL ATTENDANCE SYSTEM - GIT IGNORE POLICY
+# =====================================================================
+
+# 1. Environment & Secret Configuration
+.env
+.env.production
+.env.local
+.vagrant
+Vagrantfile
+
+# 2. Private Attendance Photographs & Biometric Assets
+/writable/attendance_photos/*
+!/writable/attendance_photos/index.html
+!/writable/attendance_photos/.gitkeep
+/writable/dev_models/*
+!/writable/dev_models/.gitkeep
+
+# 3. Local Runtime & Temporary Storage
+/writable/cache/*
+!/writable/cache/index.html
+/writable/logs/*
+!/writable/logs/index.html
+/writable/session/*
+!/writable/session/index.html
+/writable/uploads/*
+!/writable/uploads/index.html
+/writable/debugbar/*
+!/writable/debugbar/index.html
+/writable/backups/*
+!/writable/backups/index.html
+
+# 4. Database Dumps and Local SQL Scripts
+*.sql
+*.sql.gz
+*.bak
+
+# 5. Composer Dependencies (Reproducible from composer.lock)
+/vendor/
+
+# 6. Test Build Artifacts & Caches
+/build/*
+!/build/index.html
+/tests/coverage*
+.phpunit.cache/
+.phpunit.result.cache
+/phpunit
+
+# 7. OS Specific Files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+*~
+.directory
+.Trash-*
+
+# 8. IDE & Development Configurations
+.idea/
+*.iml
+.vscode/
+/nbproject/
+/nbbuild/
+/dist/
+/nbdist/
+/nbactions.xml
+/nb-configuration.xml
+/.nb-gradle/
+*.sublime-workspace
+*.sublime-project
+.phpintel
+php_errors.log
