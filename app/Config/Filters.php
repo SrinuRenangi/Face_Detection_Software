@@ -88,12 +88,12 @@ class Filters extends BaseFilters
         'after' => [
             // 'honeypot',
             // 'secureheaders',
-            'toolbar' => [
-                'except' => [
-                    'api/*',
-                    'attendance*',
-                ],
-            ],
+            // 'toolbar' => [
+            //     'except' => [
+            //         'api/*',
+            //         'attendance*',
+            //     ],
+            // ],
         ],
     ];
 

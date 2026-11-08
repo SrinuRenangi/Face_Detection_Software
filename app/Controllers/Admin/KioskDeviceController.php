@@ -68,31 +68,26 @@ class KioskDeviceController extends BaseController
     public function create()
     {
         $session = session();
-        $adminName = $session->get('admin_user_name') ?? 'admin';
+        $adminName = $session->get('admin_user_name') ?? ($session->get('admin_username') ?? 'admin');
 
-        $rules = [
-            'device_name'   => 'required|min_length[3]|max_length[100]',
-            'device_type'   => 'required|in_list[SMARTPHONE,TABLET]',
-            'terminal_mode' => 'required|in_list[ENTRY_ONLY,EXIT_ONLY]',
-        ];
-
-        if (!$this->validate($rules)) {
-            return redirect()->back()->withInput()->with('error', 'Validation error: please check device details.');
+        $deviceName = trim((string) $this->request->getPost('device_name'));
+        if (empty($deviceName)) {
+            $existingCount = $this->db->table('kiosk_devices')->countAllResults();
+            $deviceName = 'Scanner Device ' . ($existingCount + 1);
         }
 
-        $deviceName   = trim($this->request->getPost('device_name'));
-        $deviceType   = $this->request->getPost('device_type');
-        $terminalMode = $this->request->getPost('terminal_mode');
+        $deviceType   = 'TABLET';
+        $terminalMode = 'DIRECTIONAL_AUTO';
 
         $deviceId      = EmployeeModel::generateUuidV4();
         $deviceIdent   = 'DEV-' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
         $deviceEpochId = EmployeeModel::generateUuidV4();
         $now           = date('Y-m-d H:i:s');
 
-        // Generate 32-character high-entropy uppercase pairing code (16 bytes = 128 bits entropy)
-        $rawCode    = strtoupper(bin2hex(random_bytes(16)));
+        // Human-friendly 6-digit pairing code (e.g. 748291)
+        $rawCode    = sprintf('%06d', random_int(100000, 999999));
         $codeHash   = hash('sha256', $rawCode);
-        $expiresAt  = date('Y-m-d H:i:s', strtotime('+10 minutes'));
+        $expiresAt  = date('Y-m-d H:i:s', strtotime('+15 minutes'));
         $codeId     = EmployeeModel::generateUuidV4();
 
         $this->db->transStart();
@@ -102,8 +97,8 @@ class KioskDeviceController extends BaseController
             'device_name'         => $deviceName,
             'device_identifier'   => $deviceIdent,
             'device_type'         => $deviceType,
-            'device_model'        => 'Pending Hardware Registration',
-            'hardware_tier'       => 'UNKNOWN',
+            'device_model'        => 'Browser Scanner Terminal',
+            'hardware_tier'       => 'MIDRANGE',
             'terminal_mode'       => $terminalMode,
             'device_epoch_id'     => $deviceEpochId,
             'last_event_sequence' => 0,
@@ -147,7 +142,12 @@ class KioskDeviceController extends BaseController
             $deviceId
         );
 
-        return redirect()->to('/admin/kiosks')->with('success', "Kiosk device '{$deviceIdent}' created. One-time pairing code: {$rawCode} (Expires in 10 minutes).");
+        $formattedCode = substr($rawCode, 0, 3) . ' ' . substr($rawCode, 3, 3);
+        session()->setFlashdata('active_pairing_code', $rawCode);
+        session()->setFlashdata('active_pairing_device', $deviceName);
+        session()->setFlashdata('active_pairing_expires', date('h:i A', strtotime($expiresAt)));
+
+        return redirect()->to('/admin/kiosks')->with('success', "Scanner terminal '{$deviceName}' created. Pairing Code: {$formattedCode} (Valid for 15 minutes).");
     }
 
     /**
@@ -156,7 +156,7 @@ class KioskDeviceController extends BaseController
     public function generatePairingCode(string $deviceId)
     {
         $session = session();
-        $adminName = $session->get('admin_user_name') ?? 'admin';
+        $adminName = $session->get('admin_user_name') ?? ($session->get('admin_username') ?? 'admin');
 
         $device = $this->db->table('kiosk_devices')->where('id', $deviceId)->get()->getRowArray();
         if (!$device) {
@@ -168,9 +168,9 @@ class KioskDeviceController extends BaseController
         }
 
         $now       = date('Y-m-d H:i:s');
-        $rawCode   = strtoupper(bin2hex(random_bytes(16)));
+        $rawCode   = sprintf('%06d', random_int(100000, 999999));
         $codeHash  = hash('sha256', $rawCode);
-        $expiresAt = date('Y-m-d H:i:s', strtotime('+10 minutes'));
+        $expiresAt = date('Y-m-d H:i:s', strtotime('+15 minutes'));
         $codeId    = EmployeeModel::generateUuidV4();
 
         $this->db->transStart();
@@ -212,7 +212,12 @@ class KioskDeviceController extends BaseController
             $deviceId
         );
 
-        return redirect()->to('/admin/kiosks')->with('success', "Fresh pairing code for '{$device['device_identifier']}': {$rawCode} (Expires in 10 minutes).");
+        $formattedCode = substr($rawCode, 0, 3) . ' ' . substr($rawCode, 3, 3);
+        session()->setFlashdata('active_pairing_code', $rawCode);
+        session()->setFlashdata('active_pairing_device', $device['device_name']);
+        session()->setFlashdata('active_pairing_expires', date('h:i A', strtotime($expiresAt)));
+
+        return redirect()->to('/admin/kiosks')->with('success', "Fresh 6-digit pairing code for '{$device['device_name']}': {$formattedCode} (Valid for 15 minutes).");
     }
 
     /**

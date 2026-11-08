@@ -25,10 +25,10 @@
         /* Main Container */
         .dash-content {
             flex: 1;
-            max-width: 1200px;
+            max-width: 1400px;
             width: 100%;
-            margin: 0 auto;
-            padding: 2rem 1.5rem 3rem;
+            margin: 0;
+            padding: 2rem 2.5rem 3rem;
             box-sizing: border-box;
         }
 
@@ -125,33 +125,27 @@
             font-size: 2rem;
             font-weight: 800;
             color: #0f172a;
-            line-height: 1;
-            margin-bottom: 0.35rem;
-            letter-spacing: -0.02em;
+            line-height: 1.1;
+            margin-bottom: 0.2rem;
         }
 
         .kpi-label {
             font-size: 0.85rem;
-            font-weight: 600;
             color: #64748b;
+            font-weight: 500;
         }
 
-        /* Section Container */
+        /* Section Layout */
         .dash-section {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 14px;
-            padding: 1.75rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 2px 6px -1px rgba(15, 23, 42, 0.05);
+            margin-bottom: 2.25rem;
         }
 
         .section-header {
-            margin-bottom: 1.25rem;
+            margin-bottom: 1rem;
         }
 
         .section-title {
-            font-size: 1.2rem;
+            font-size: 1.15rem;
             font-weight: 700;
             color: #0f172a;
             margin-bottom: 0.25rem;
@@ -162,18 +156,18 @@
             color: #64748b;
         }
 
-        /* Module Action Cards Grid */
+        /* Quick Modules Grid */
         .module-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
             gap: 1.25rem;
         }
 
         .module-card {
-            background: #f8fafc;
+            background: #ffffff;
             border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 1.35rem;
+            border-radius: 14px;
+            padding: 1.5rem;
             text-decoration: none;
             color: inherit;
             display: flex;
@@ -312,7 +306,7 @@
                     <circle cx="12" cy="12" r="10"></circle>
                     <polyline points="12 6 12 12 16 14"></polyline>
                 </svg>
-                <span>Server Time: <?= esc($serverTime) ?></span>
+                <span>Server Time: <?= esc($serverTimeIST ?? $serverTime) ?></span>
             </div>
         </div>
 
@@ -360,6 +354,110 @@
             </div>
         </div>
 
+        <!-- Operational Attendance Cutoff Notifications & Alerts -->
+        <?php if ($isPast12PM && !empty($missingCheckIns)): ?>
+            <div style="background: #fff7ed; border: 1px solid #fed7aa; border-left: 4px solid #ea580c; border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 2rem; box-shadow: 0 2px 6px rgba(234, 88, 12, 0.08);">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.6rem;">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; background: #ea580c; color: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem;">!</div>
+                        <div>
+                            <h3 style="font-size: 1.05rem; font-weight: 700; color: #9a3412; margin: 0;">12:00 PM Attendance Cutoff Alert</h3>
+                            <span style="font-size: 0.8rem; color: #c2410c;">Staff member(s) who have not marked attendance before 12:00 PM today</span>
+                        </div>
+                    </div>
+                    <span style="font-size: 0.8rem; font-weight: 700; background: #ffedd5; color: #9a3412; padding: 0.25rem 0.65rem; border-radius: 9999px; border: 1px solid #fdba74;">
+                        <?= count($missingCheckIns) ?> Pending Check-In<?= count($missingCheckIns) > 1 ? 's' : '' ?>
+                    </span>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 0.5rem;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid #fed7aa; text-align: left; color: #9a3412;">
+                                <th style="padding: 0.4rem 0.5rem;">Staff ID</th>
+                                <th style="padding: 0.4rem 0.5rem;">Full Name</th>
+                                <th style="padding: 0.4rem 0.5rem;">Department</th>
+                                <th style="padding: 0.4rem 0.5rem;">Designation</th>
+                                <th style="padding: 0.4rem 0.5rem; text-align: right;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($missingCheckIns as $mEmp): ?>
+                                <tr style="border-bottom: 1px solid #ffedd5;">
+                                    <td style="padding: 0.5rem; font-family: monospace; font-weight: 600; color: #9a3412;"><?= esc($mEmp['employee_id']) ?></td>
+                                    <td style="padding: 0.5rem; font-weight: 600; color: #1e293b;"><?= esc($mEmp['full_name']) ?></td>
+                                    <td style="padding: 0.5rem; color: #475569;"><?= esc($mEmp['department']) ?></td>
+                                    <td style="padding: 0.5rem; color: #64748b;"><?= esc($mEmp['designation']) ?></td>
+                                    <td style="padding: 0.5rem; text-align: right;">
+                                        <span style="font-size: 0.72rem; font-weight: 700; background: #fee2e2; color: #b91c1c; padding: 0.2rem 0.5rem; border-radius: 6px; border: 1px solid #fecaca;">
+                                            NO CHECK-IN
+                                        </span>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($isPast7PM && !empty($missingSignOffs)): ?>
+            <div style="background: #fef2f2; border: 1px solid #fecaca; border-left: 4px solid #dc2626; border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 2rem; box-shadow: 0 2px 6px rgba(220, 38, 38, 0.08);">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.6rem;">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; background: #dc2626; color: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem;">!</div>
+                        <div>
+                            <h3 style="font-size: 1.05rem; font-weight: 700; color: #991b1b; margin: 0;">7:00 PM Sign-Off Cutoff Alert</h3>
+                            <span style="font-size: 0.8rem; color: #b91c1c;">Staff member(s) who checked in today but have not signed off (checked out) till 7:00 PM</span>
+                        </div>
+                    </div>
+                    <span style="font-size: 0.8rem; font-weight: 700; background: #fee2e2; color: #991b1b; padding: 0.25rem 0.65rem; border-radius: 9999px; border: 1px solid #fca5a5;">
+                        <?= count($missingSignOffs) ?> Missing Sign-Off<?= count($missingSignOffs) > 1 ? 's' : '' ?>
+                    </span>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 0.5rem;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid #fecaca; text-align: left; color: #991b1b;">
+                                <th style="padding: 0.4rem 0.5rem;">Staff ID</th>
+                                <th style="padding: 0.4rem 0.5rem;">Full Name</th>
+                                <th style="padding: 0.4rem 0.5rem;">Department</th>
+                                <th style="padding: 0.4rem 0.5rem;">Check-In Time</th>
+                                <th style="padding: 0.4rem 0.5rem; text-align: right;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($missingSignOffs as $sEmp): ?>
+                                <tr style="border-bottom: 1px solid #fee2e2;">
+                                    <td style="padding: 0.5rem; font-family: monospace; font-weight: 600; color: #991b1b;"><?= esc($sEmp['employee_id']) ?></td>
+                                    <td style="padding: 0.5rem; font-weight: 600; color: #1e293b;"><?= esc($sEmp['full_name']) ?></td>
+                                    <td style="padding: 0.5rem; color: #475569;"><?= esc($sEmp['department']) ?></td>
+                                    <td style="padding: 0.5rem; color: #334155; font-weight: 500;"><?= esc(date('h:i A', strtotime($sEmp['check_in_time']))) ?></td>
+                                    <td style="padding: 0.5rem; text-align: right;">
+                                        <span style="font-size: 0.72rem; font-weight: 700; background: #fee2e2; color: #b91c1c; padding: 0.2rem 0.5rem; border-radius: 6px; border: 1px solid #fca5a5;">
+                                            PENDING SIGN-OFF
+                                        </span>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        <?php endif; ?>
+
+        <?php if ((!$isPast12PM || empty($missingCheckIns)) && (!$isPast7PM || empty($missingSignOffs))): ?>
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 0.85rem 1.25rem; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+                <div style="display: flex; align-items: center; gap: 0.6rem;">
+                    <div style="width: 26px; height: 26px; border-radius: 50%; background: #16a34a; color: white; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700;">✓</div>
+                    <div>
+                        <span style="font-weight: 700; color: #166534; font-size: 0.875rem;">Attendance Cutoffs In Order</span>
+                        <span style="font-size: 0.8rem; color: #15803d; margin-left: 0.5rem;">All active staff have marked attendance on schedule (12:00 PM Check-In &bull; 7:00 PM Sign-Off monitored).</span>
+                    </div>
+                </div>
+                <span style="font-size: 0.75rem; font-weight: 600; color: #166534; background: #dcfce7; padding: 0.2rem 0.55rem; border-radius: 9999px;">Cutoff Engine Active</span>
+            </div>
+        <?php endif; ?>
+
         <!-- Functional Management Modules -->
         <div class="dash-section">
             <div class="section-header">
@@ -390,7 +488,7 @@
                             <span>Scanner Terminals &amp; Pairing</span>
                             <span style="font-size: 0.7rem; font-weight: 600; padding: 0.15rem 0.5rem; background: #f0fdfa; color: #0f766e; border-radius: 6px;">Devices</span>
                         </div>
-                        <p class="module-desc">Generate 32-character single-use pairing codes to authorize tablets, phones, or computers as dedicated face scanners.</p>
+                        <p class="module-desc">Generate single-use 6-digit pairing codes to authorize tablets, phones, or computers as dedicated face scanners.</p>
                     </div>
                     <div class="module-link" style="color: #0f766e;">
                         <span>Manage Scanner Devices</span>

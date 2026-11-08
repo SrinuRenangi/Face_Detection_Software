@@ -118,7 +118,7 @@ class KioskApiController extends ResourceController
         $rawToken       = bin2hex(random_bytes(32));
         $tokenHash      = hash('sha256', $rawToken);
         $now            = date('Y-m-d H:i:s');
-        $tokenExpiresAt = date('Y-m-d H:i:s', strtotime('+30 days'));
+        $tokenExpiresAt = date('Y-m-d H:i:s', strtotime('+10 years'));
 
         $db = Database::connect();
         $db->table('kiosk_devices')->where('id', $device->id)->update([
@@ -202,8 +202,8 @@ class KioskApiController extends ResourceController
         $now        = date('Y-m-d H:i:s');
         $auditModel = new AdminAuditLogModel();
 
-        // Validate code format and length (must have at least 128 bits of entropy: 32 hex chars)
-        if (strlen($pairingCode) !== 32 || !ctype_xdigit($pairingCode)) {
+        // Validate code format and length (supports human-friendly 6-digit codes and 32-hex tokens)
+        if (strlen($pairingCode) < 6 || strlen($pairingCode) > 64) {
             if (!empty($challengeId)) {
                 // Count malformed attempt against the specific challenge
                 $challengeRec = $db->query("SELECT * FROM kiosk_pairing_codes WHERE id = ? FOR UPDATE", [$challengeId])->getRowArray();
@@ -408,7 +408,7 @@ class KioskApiController extends ResourceController
         $rawToken       = bin2hex(random_bytes(32));
         $tokenHash      = hash('sha256', $rawToken);
         $tokenCreatedAt = $now;
-        $tokenExpiresAt = date('Y-m-d H:i:s', strtotime('+30 days'));
+        $tokenExpiresAt = date('Y-m-d H:i:s', strtotime('+10 years'));
 
         $deviceId      = $pairingRecord['paired_device_id'] ?: EmployeeModel::generateUuidV4();
         $deviceEpochId = EmployeeModel::generateUuidV4();
@@ -1035,6 +1035,9 @@ class KioskApiController extends ResourceController
             }
         }
 
+        $schoolTz = new \DateTimeZone('Asia/Kolkata');
+        $nowIst   = new \DateTimeImmutable('now', $schoolTz);
+
         // Delegate to canonical AttendanceSyncService
         $syncService = new \App\Services\AttendanceSyncService();
         $syncPayload = [
@@ -1043,7 +1046,7 @@ class KioskApiController extends ResourceController
             'device_id'         => $device->id,
             'device_epoch_id'   => $device->device_epoch_id,
             'terminal_mode'     => $device->terminal_mode,
-            'timestamp'         => date('Y-m-d H:i:s'),
+            'timestamp'         => $nowIst->format('Y-m-d H:i:s'),
             'sync_source'       => 'DIRECT_ONLINE',
             'confidence_score'  => $confidence ?: 0.98,
         ];
@@ -1097,7 +1100,34 @@ class KioskApiController extends ResourceController
         }
 
         $eventType = $result['event_type'] ?? ($device->terminal_mode === 'EXIT_ONLY' ? 'CHECK_OUT' : 'CHECK_IN');
-        $displayAction = ($eventType === 'CHECK_OUT') ? 'Check-Out (Exit)' : 'Check-In (Entry)';
+        if ($eventType === 'CHECK_OUT') {
+            $displayAction = 'Check-Out (Signed Off)';
+            $msg = "{$employee['full_name']} successfully signed off for today.";
+        } elseif ($eventType === 'ALREADY_COMPLETED') {
+            $displayAction = 'Shift Completed';
+            $msg = "{$employee['full_name']} has already completed attendance for today.";
+        } elseif ($eventType === 'ALREADY_CHECKED_IN' || $eventType === 'PRESENCE_CONFIRMED') {
+            $displayAction = 'Already Checked In';
+            $msg = "{$employee['full_name']} is already checked in today. One attendance per employee.";
+        } else {
+            $displayAction = 'Check-In (Arrival)';
+            $msg = "Welcome, {$employee['full_name']}! Attendance recorded (Check-In).";
+        }
+
+        $rawCheckTime = ($eventType === 'CHECK_OUT')
+            ? ($result['check_out_time'] ?? null)
+            : ($result['check_in_time'] ?? null);
+
+        if (!empty($rawCheckTime)) {
+            $dt = new \DateTimeImmutable($rawCheckTime, $schoolTz);
+            $formattedTime = $dt->format('h:i:s A');
+            $formattedDate = $dt->format('d M Y');
+            $isoTimestamp  = $dt->format('c');
+        } else {
+            $formattedTime = $nowIst->format('h:i:s A');
+            $formattedDate = $nowIst->format('d M Y');
+            $isoTimestamp  = $nowIst->format('c');
+        }
 
         return $this->respond([
             'status'         => 'success',
@@ -1106,9 +1136,10 @@ class KioskApiController extends ResourceController
             'employee_name'  => $employee['full_name'],
             'action'         => $eventType,
             'action_label'   => $displayAction,
-            'recorded_at'    => date('h:i:s A'),
-            'work_date'      => date('d M Y'),
-            'message'        => "Attendance recorded: {$employee['full_name']} ({$displayAction})",
+            'recorded_at'    => $formattedTime,
+            'work_date'      => $formattedDate,
+            'timestamp_iso'  => $isoTimestamp,
+            'message'        => $msg,
         ]);
     }
 

@@ -279,6 +279,72 @@
             color: #94a3b8;
         }
 
+        /* Informational Cooldown / Already Recorded Card (Decoupled from Green Success) */
+        .punch-info-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.96);
+            border-radius: 20px;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            z-index: 30;
+            box-sizing: border-box;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            animation: fade-in 0.2s ease-out;
+        }
+
+        .info-icon-box {
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            margin-bottom: 1rem;
+            box-shadow: 0 0 25px rgba(2, 132, 199, 0.35);
+        }
+
+        .info-name {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 0.35rem;
+            text-align: center;
+        }
+
+        .info-action-badge {
+            padding: 0.4rem 1rem;
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            color: #38bdf8;
+            border-radius: 9999px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .info-time-text {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            text-align: center;
+            max-width: 320px;
+            line-height: 1.4;
+        }
+
+        .badge-cooldown {
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            color: #38bdf8;
+        }
+
         /* Inactivity Ambient Sleep Screen */
         .scanner-sleep-screen {
             position: fixed;
@@ -343,13 +409,13 @@
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
             </svg>
             <span>Edifies School</span>
-            <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 500;">Attendance Kiosk &bull; Touchless Presence Verification System &bull; Terminal: <?= esc($currentDevice['device_identifier'] ?? 'Online') ?></span>
+            <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 500;">Attendance Kiosk &bull; Touchless Presence Verification System &bull; Terminal: <span id="kiosk-terminal-id" style="color: #38bdf8; font-weight: 600;"><?= esc($currentDevice['device_identifier'] ?? (session()->get('kiosk_paired_device_ident') ?? 'UNPAIRED')) ?></span></span>
         </div>
 
         <div style="display: flex; align-items: center; gap: 0.75rem;">
             <div class="kiosk-mode-badge">
                 <div style="width: 8px; height: 8px; border-radius: 50%; background: #34d399; box-shadow: 0 0 6px #34d399;"></div>
-                <span><?= ($currentDevice['terminal_mode'] ?? 'ENTRY_ONLY') === 'EXIT_ONLY' ? 'CHECK-OUT SCANNER' : 'CHECK-IN SCANNER' ?></span>
+                <span><?= ($currentDevice['terminal_mode'] ?? 'DIRECTIONAL_AUTO') === 'EXIT_ONLY' ? 'CHECK-OUT SCANNER' : (($currentDevice['terminal_mode'] ?? '') === 'ENTRY_ONLY' ? 'CHECK-IN SCANNER' : 'TOUCHLESS ATTENDANCE SCANNER') ?></span>
             </div>
         </div>
     </header>
@@ -376,7 +442,7 @@
                 <span class="status-text">Starting Face Recognition Scanner...</span>
             </div>
 
-            <!-- Celebratory Punch Success Card -->
+            <!-- Celebratory Punch Success Card (Only for New Check-In / Check-Out) -->
             <div class="punch-success-overlay" id="punch-success-card">
                 <div class="success-icon-box">
                     <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
@@ -386,6 +452,20 @@
                 <div class="success-name" id="success-emp-name">&mdash;</div>
                 <div class="success-action-badge" id="success-action-text">&mdash;</div>
                 <div class="success-time-text" id="success-time-text">&mdash;</div>
+            </div>
+
+            <!-- Informational Cooldown / Duplicate Notice (Decoupled from Green Success) -->
+            <div class="punch-info-overlay" id="punch-info-card">
+                <div class="info-icon-box">
+                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                </div>
+                <div class="info-name" id="info-emp-name">&mdash;</div>
+                <div class="info-action-badge" id="info-action-text">Already Checked In Today</div>
+                <div class="info-time-text" id="info-time-text">&mdash;</div>
             </div>
         </div>
     </main>
@@ -400,6 +480,11 @@
     </div>
 
     <!-- Scripts: Face API & Dedicated Edge Scanner Engine -->
+    <script <?= csp_script_nonce() ?>>
+        window.__KIOSK_TOKEN__ = <?= json_encode($kioskToken ?? '') ?>;
+        window.__KIOSK_TERMINAL_ID__ = <?= json_encode($currentDevice['device_identifier'] ?? (session()->get('kiosk_paired_device_ident') ?? '')) ?>;
+        window.__KIOSK_TIMEZONE__ = 'Asia/Kolkata';
+    </script>
     <script <?= csp_script_nonce() ?> src="/js/face-api.js"></script>
     <script <?= csp_script_nonce() ?> src="/js/kiosk-face-attendance.js"></script>
     <script <?= csp_script_nonce() ?> src="/js/kiosk-clock.js"></script>

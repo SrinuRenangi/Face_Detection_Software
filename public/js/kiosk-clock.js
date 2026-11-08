@@ -7,14 +7,16 @@
 
     function updateClock() {
         const now = new Date();
-        const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
-        const dateStr = now.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const timeStr = now.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+        const dateStr = now.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
         const clockEl = document.getElementById('kiosk-live-clock');
         const dateEl = document.getElementById('kiosk-live-date');
+        const sleepClockEl = document.getElementById('sleep-clock-display');
 
         if (clockEl) clockEl.textContent = timeStr;
         if (dateEl) dateEl.textContent = dateStr;
+        if (sleepClockEl) sleepClockEl.textContent = timeStr;
     }
 
     setInterval(updateClock, 1000);

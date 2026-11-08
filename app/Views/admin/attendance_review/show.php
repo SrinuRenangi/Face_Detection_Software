@@ -119,25 +119,7 @@
     </style>
 </head>
 <body>
-    <header class="navbar">
-        <div class="container nav-content">
-            <a href="/admin" class="brand-link">
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
-                </svg>
-                <span>Edifies School</span>
-                <span class="brand-badge">Admin</span>
-            </a>
-            <div class="nav-actions">
-                <a href="/admin/dashboard" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
-                    <span>Dashboard</span>
-                </a>
-                <a href="/admin/attendance/review" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
-                    <span>&larr; Review Queue</span>
-                </a>
-            </div>
-        </div>
-    </header>
+    <?= view('admin/common/navbar', ['activeNav' => 'attendance']) ?>
 
     <main class="container" style="padding: 2rem 1rem; max-width: 1000px;">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">

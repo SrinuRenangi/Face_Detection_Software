@@ -12,11 +12,13 @@ class KioskPairingController extends BaseController
     /**
      * Renders Dedicated Scanner Device Pairing Interface
      */
-    public function pair(): string|\CodeIgniter\HTTP\RedirectResponse
+    public function pair(): string|\CodeIgniter\HTTP\RedirectResponse|\CodeIgniter\HTTP\ResponseInterface
     {
         $db = Database::connect();
         $isPaired = false;
         $pairedDevice = null;
+
+        $isRevoked = false;
 
         // Check if device token cookie is present in cookies or header
         $rawToken = $this->request->getCookie('edifies_kiosk_token');
@@ -38,15 +40,49 @@ class KioskPairingController extends BaseController
             if ($device) {
                 $isPaired = true;
                 $pairedDevice = $device;
+            } else {
+                $revoked = $db->table('kiosk_devices')->where('device_token_hash', $tokenHash)->where('status', 'REVOKED')->get()->getRowArray();
+                if ($revoked) {
+                    $isRevoked = true;
+                    session()->remove('kiosk_paired_device_id');
+                    session()->remove('kiosk_paired_device_ident');
+                    session()->remove('kiosk_paired_device_name');
+                }
             }
         }
 
-        return view('attendance/pair', [
+        if (!$isPaired) {
+            $sessionDeviceId = session()->get('kiosk_paired_device_id');
+            if (!empty($sessionDeviceId)) {
+                $device = $db->table('kiosk_devices')->where('id', $sessionDeviceId)->where('status', 'ACTIVE')->get()->getRowArray();
+                if ($device) {
+                    $isPaired = true;
+                    $pairedDevice = $device;
+                } else {
+                    session()->remove('kiosk_paired_device_id');
+                    session()->remove('kiosk_paired_device_ident');
+                    session()->remove('kiosk_paired_device_name');
+                }
+            }
+        }
+
+        // Once paired, immediately navigate to attendance scanner interface
+        if ($isPaired && empty($this->request->getGet('new_code'))) {
+            return redirect()->to('/attendance');
+        }
+
+        $response = $this->response->setBody(view('attendance/pair', [
             'pageTitle'    => 'Pair Attendance Scanner Device',
             'isPaired'     => $isPaired,
             'pairedDevice' => $pairedDevice,
             'serverTime'   => date('Y-m-d H:i:s'),
-        ]);
+        ]));
+
+        if ($isRevoked) {
+            $response->deleteCookie('edifies_kiosk_token', '', '/');
+        }
+
+        return $response;
     }
 
     /**
@@ -82,8 +118,8 @@ class KioskPairingController extends BaseController
         $db = Database::connect();
         $now = date('Y-m-d H:i:s');
 
-        // Entropy and length validation: 32 hex chars (128-bit)
-        if (strlen($pairingCode) !== 32 || !ctype_xdigit($pairingCode)) {
+        // Pairing code validation: supports human-friendly 6-digit codes, 8-character codes, and 32-hex codes
+        if (strlen($pairingCode) < 6 || strlen($pairingCode) > 64) {
             $auditModel->log(
                 'KIOSK_SECURITY',
                 'KIOSK_PAIRING_FAILED',
@@ -97,7 +133,7 @@ class KioskPairingController extends BaseController
 
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Invalid pairing code format. Pairing codes must be 32 hexadecimal characters.');
+                ->with('error', 'Invalid pairing code format. Please check the 6-digit code provided by the Administrator.');
         }
 
         $codeHash = hash('sha256', $pairingCode);
@@ -159,16 +195,19 @@ class KioskPairingController extends BaseController
         // Generate 256-bit high-entropy device token
         $rawToken       = bin2hex(random_bytes(32));
         $tokenHash      = hash('sha256', $rawToken);
-        $tokenExpiresAt = date('Y-m-d H:i:s', strtotime('+30 days'));
+        $tokenExpiresAt = date('Y-m-d H:i:s', strtotime('+10 years'));
 
         $deviceId      = $pairingRecord['paired_device_id'] ?: EmployeeModel::generateUuidV4();
         $deviceEpochId = EmployeeModel::generateUuidV4();
         $deviceIdent   = 'DEV-' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
 
         $existingDevice = $db->table('kiosk_devices')->where('id', $deviceId)->get()->getRowArray();
-        $terminalMode   = $existingDevice['terminal_mode'] ?? 'ENTRY_ONLY';
+        $terminalMode   = $existingDevice['terminal_mode'] ?? 'DIRECTIONAL_AUTO';
 
         if ($existingDevice) {
+            if (!empty($existingDevice['device_identifier'])) {
+                $deviceIdent = $existingDevice['device_identifier'];
+            }
             $db->table('kiosk_devices')->where('id', $deviceId)->update([
                 'device_name'         => $deviceName,
                 'device_type'         => $deviceType,
@@ -261,20 +300,20 @@ class KioskPairingController extends BaseController
             'kiosk_paired_device_name'  => $deviceName,
         ]);
 
-        // Issue HttpOnly, SameSite=Strict device cookie scoped to /api/kiosk on the redirect response
+        // Issue permanent HttpOnly device authorization cookie scoped to root '/'
         $isSecure = (ENVIRONMENT === 'production') || (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 
         return redirect()->to('/attendance')
             ->setCookie(
                 'edifies_kiosk_token',
                 $rawToken,
-                2592000,
+                31536000, // 1 year persistent pairing
                 '',
-                '/api/kiosk',
+                '/',
                 '',
                 $isSecure,
                 true, // HttpOnly
-                'Strict'
+                'Lax'
             )
             ->with('success', "Device successfully paired and authorized as {$deviceName} ({$deviceIdent})!");
     }

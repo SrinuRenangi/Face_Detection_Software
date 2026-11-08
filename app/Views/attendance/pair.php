@@ -153,7 +153,7 @@
         </div>
 
         <h1 class="pair-title" style="font-size: 1.5rem; font-weight: 700; color: #0f172a; margin: 0 0 0.35rem 0; letter-spacing: -0.02em;">Scanner Device Pairing</h1>
-        <p class="pair-subtitle" style="font-size: 0.875rem; color: #64748b; margin: 0 0 1.75rem 0; line-height: 1.4;">Enter the single-use 32-character pairing code from the School Administrator</p>
+        <p class="pair-subtitle" style="font-size: 0.875rem; color: #64748b; margin: 0 0 1.75rem 0; line-height: 1.4;">Enter the 6-digit pairing code from the School Administrator</p>
 
         <!-- Active Paired Device Status -->
         <?php if ($isPaired && $pairedDevice): ?>
@@ -183,14 +183,14 @@
             <?= csrf_field() ?>
 
             <div class="form-group" style="text-align: left; margin-bottom: 1.5rem;">
-                <label for="pairing_code" class="form-label" style="display: block; font-size: 0.85rem; font-weight: 600; color: #334155; margin-bottom: 0.5rem;">Single-Use Pairing Code</label>
+                <label for="pairing_code" class="form-label" style="display: block; font-size: 0.85rem; font-weight: 600; color: #334155; margin-bottom: 0.5rem;">Single-Use Pairing Code (6-Digit)</label>
                 <input
                     type="text"
                     id="pairing_code"
                     name="pairing_code"
                     class="pairing-input"
                     value="<?= esc(old('pairing_code')) ?>"
-                    placeholder="ENTER 32-CHAR CODE"
+                    placeholder="e.g. 748 291"
                     maxlength="40"
                     required
                     autofocus
@@ -198,7 +198,7 @@
                     autocorrect="off"
                     autocapitalize="characters"
                     spellcheck="false"
-                    style="width: 100%; padding: 0.85rem 1rem; font-size: 1.05rem; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; text-transform: uppercase; letter-spacing: 0.12em; text-align: center; border: 2px solid #cbd5e1; border-radius: 10px; outline: none; box-sizing: border-box; background: #f8fafc; color: #0f172a;"
+                    style="width: 100%; padding: 0.85rem 1rem; font-size: 1.25rem; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; text-transform: uppercase; letter-spacing: 0.15em; text-align: center; border: 2px solid #cbd5e1; border-radius: 10px; outline: none; box-sizing: border-box; background: #f8fafc; color: #0f172a;"
                 >
             </div>
 

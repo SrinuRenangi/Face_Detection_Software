@@ -181,11 +181,7 @@ class AttendanceSyncService
         }
 
         // Server-authoritative settings (Client JSON cannot override)
-        $terminalMode = $deviceRow['terminal_mode'] ?? 'ENTRY_ONLY';
-        if ($terminalMode === 'DIRECTIONAL_AUTO') {
-            // Stage 3.2.2 Policy: DIRECTIONAL_AUTO is disabled for operational devices until optical tracking is validated
-            $terminalMode = 'ENTRY_ONLY';
-        }
+        $terminalMode = $deviceRow['terminal_mode'] ?? 'DIRECTIONAL_AUTO';
 
         $deviceEpochId = !empty($deviceRow['device_epoch_id']) ? $deviceRow['device_epoch_id'] : ($punchData['device_epoch_id'] ?? 'epoch-default-1');
         $submittedEpochId = $punchData['submitted_epoch_id'] ?? $punchData['device_epoch_id'] ?? $deviceEpochId;
@@ -578,6 +574,69 @@ class AttendanceSyncService
                                 ]);
                                 $processingStatus = 'PROCESSED';
                                 $summaryAction    = 'CHECK_OUT_RECORDED';
+                            }
+                        }
+                    } elseif ($terminalMode === 'DIRECTIONAL_AUTO') {
+                        if (!$existing) {
+                            // Initial check-in for this work date
+                            $targetRecordId = self::generateUuidV4();
+                            $this->attendanceModel->insert([
+                                'id'               => $targetRecordId,
+                                'employee_id'      => $employeeId,
+                                'work_date'        => $workDate,
+                                'check_in_time'    => $localTimeStr,
+                                'check_out_time'   => null,
+                                'status'           => 'CHECKED_IN',
+                                'confidence_score' => $confidenceScore,
+                                'device_id'        => $deviceId,
+                                'client_uuid'      => $clientUuid,
+                                'sync_source'      => $syncSource,
+                                'is_corrected'     => 0,
+                                'version'          => 1,
+                                'created_at'       => $serverReceivedAt,
+                                'updated_at'       => $serverReceivedAt,
+                            ]);
+                            $targetEventType  = 'CHECK_IN';
+                            $processingStatus = 'PROCESSED';
+                            $summaryAction    = 'CREATED';
+                        } else {
+                            // Already has attendance record for today
+                            if (!empty($existing['check_out_time']) || $existing['status'] === 'CHECKED_OUT') {
+                                // Already checked in and checked out: attendance completed for today
+                                $targetEventType  = 'ALREADY_COMPLETED';
+                                $processingStatus = 'ALREADY_COMPLETED';
+                                $summaryAction    = 'DUPLICATE_IGNORED';
+                                $notes            = 'Attendance already completed for today. Duplicate scan ignored.';
+                            } else {
+                                // Has checked in, check_out_time is empty
+                                $existingCheckInEpoch = (new \DateTimeImmutable($existing['check_in_time'], $schoolTz))->getTimestamp();
+                                $elapsed = $punchEpochTime - $existingCheckInEpoch;
+
+                                $movementDirection = $punchData['movement_direction'] ?? null;
+                                if ($movementDirection === 'UNKNOWN') {
+                                    // Ambiguous optical movement direction: continuous presence, no check-out
+                                    $targetEventType  = 'PRESENCE_CONFIRMED';
+                                    $processingStatus = 'DUPLICATE_IGNORED';
+                                    $summaryAction    = 'DUPLICATE_IGNORED';
+                                    $notes            = 'Ambiguous movement direction on auto terminal: presence confirmed, check-in preserved.';
+                                } elseif ($elapsed < 120) {
+                                    // Under 2 minutes: continuous presence confirmation, do not duplicate
+                                    $targetEventType  = 'ALREADY_CHECKED_IN';
+                                    $processingStatus = 'ALREADY_CHECKED_IN';
+                                    $summaryAction    = 'DUPLICATE_IGNORED';
+                                    $notes            = 'Employee already checked in today. Immediate repeated punch ignored.';
+                                } else {
+                                    // Return scan after cooldown: records Check-Out / Sign-Off
+                                    $this->attendanceModel->update($existing['id'], [
+                                        'check_out_time' => $localTimeStr,
+                                        'status'         => 'CHECKED_OUT',
+                                        'version'        => (int) $existing['version'] + 1,
+                                        'updated_at'     => $serverReceivedAt,
+                                    ]);
+                                    $targetEventType  = 'CHECK_OUT';
+                                    $processingStatus = 'PROCESSED';
+                                    $summaryAction    = 'CHECK_OUT_RECORDED';
+                                }
                             }
                         }
                     }
