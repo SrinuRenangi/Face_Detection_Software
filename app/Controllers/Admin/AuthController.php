@@ -30,11 +30,54 @@ class AuthController extends BaseController
             return redirect()->to('/admin');
         }
 
-        $home = new \App\Controllers\Home();
-        if ($this->request) {
-            $home->initController($this->request, $this->response, $this->logger);
+        $db = \Config\Database::connect();
+        $dbConnected = false;
+        $dbPlatform = 'MySQL/MariaDB';
+
+        try {
+            $db->initialize();
+            if ($db->connID) {
+                $dbConnected = true;
+                $dbPlatform = $db->getPlatform() . ' ' . $db->getVersion();
+            }
+        } catch (\Throwable $e) {
+            $dbConnected = false;
         }
-        return $home->index();
+
+        $isPairedDevice = false;
+        $pairedDeviceInfo = null;
+        $rawDeviceToken = $this->request ? $this->request->getCookie('edifies_kiosk_token') : null;
+
+        if (empty($rawDeviceToken) && $this->request) {
+            $cookieHeader = $this->request->getHeaderLine('Cookie');
+            if (!empty($cookieHeader) && preg_match('/(?:^|;\s*)edifies_kiosk_token=([^;]+)/', $cookieHeader, $matches)) {
+                $rawDeviceToken = trim($matches[1]);
+            }
+        }
+
+        if (!empty($rawDeviceToken) && $dbConnected) {
+            $tokenHash = hash('sha256', $rawDeviceToken);
+            $deviceRow = $db->table('kiosk_devices')
+                ->where('device_token_hash', $tokenHash)
+                ->where('status', 'ACTIVE')
+                ->get()
+                ->getRowArray();
+
+            if ($deviceRow) {
+                $isPairedDevice = true;
+                $pairedDeviceInfo = $deviceRow;
+            }
+        }
+
+        return view('home', [
+            'pageTitle'        => 'Staff Attendance Management System',
+            'dbConnected'      => $dbConnected,
+            'dbPlatform'       => $dbPlatform,
+            'phpVersion'       => PHP_VERSION,
+            'serverTime'       => date('Y-m-d H:i:s T'),
+            'isPairedDevice'   => $isPairedDevice,
+            'pairedDeviceInfo' => $pairedDeviceInfo,
+        ]);
     }
 
     /**
