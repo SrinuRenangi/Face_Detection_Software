@@ -21,7 +21,7 @@ class RouteAndSecurityFeatureTest extends CIUnitTestCase
         $result = $this->get('/');
         $result->assertStatus(200);
         $result->assertSee('Staff Attendance Management System');
-        $result->assertSee('Launch Tablet Kiosk');
+        $result->assertSee('Pair Scanner with 1-Time Code');
         $result->assertSee('Administrator Sign In');
     }
 

@@ -124,7 +124,7 @@ class AttendanceSyncServiceTest extends CIUnitTestCase
 
         // Insert valid server time anchor for test tablet
         $anchorId = EmployeeModel::generateUuidV4();
-        $punchTime = date('Y-m-d 08:05:00');
+        $punchTime = date('Y-m-d H:i:s', time() - 3600);
         $punchUtc = (new \DateTimeImmutable($punchTime, new \DateTimeZone('Asia/Kolkata')))->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s');
         $this->db->table('kiosk_time_anchors')->insert([
             'id'              => $anchorId,

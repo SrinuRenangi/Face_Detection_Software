@@ -56,10 +56,10 @@ class FaceLabFeatureTest extends CIUnitTestCase
         $this->assertGreaterThan(1000000, filesize($jsPath)); // > 1 MB
     }
 
-    public function testLocalModelFilesAreRelocatedToWritableDevModels()
+    public function testLocalModelFilesAreServedFromPublicModels()
     {
-        // Stage 3.2.4: Model binaries removed from public web root to prevent unlicenced exposure
-        $modelsDir = WRITEPATH . 'dev_models/';
+        // Face recognition neural network models served for client-side edge recognition
+        $modelsDir = FCPATH . 'models/';
         $expectedFiles = [
             'tiny_face_detector_model-weights_manifest.json',
             'tiny_face_detector_model.bin',
@@ -70,20 +70,12 @@ class FaceLabFeatureTest extends CIUnitTestCase
         ];
 
         foreach ($expectedFiles as $file) {
-            $this->assertFileExists($modelsDir . $file, "Model file {$file} must be safely stored in writable/dev_models/.");
+            $this->assertFileExists($modelsDir . $file, "Model file {$file} must be available in public/models/.");
         }
 
         // Recognition model weights should be ~6.4 MB
         $recModelSize = filesize($modelsDir . 'face_recognition_model.bin');
         $this->assertGreaterThan(6000000, $recModelSize);
-
-        // Verify public/models is completely absent from public web root
-        $this->assertDirectoryDoesNotExist(FCPATH . 'models');
-
-        // Verify HTTP requests to model files return 404
-        $res = $this->get('/models/tiny_face_detector_model-weights_manifest.json');
-        $res->assertStatus(404);
-        $res->assertJSONFragment(['code' => 'MODELS_DISTRIBUTION_DISABLED']);
     }
 }
 

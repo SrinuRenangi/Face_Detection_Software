@@ -156,12 +156,13 @@ class AndroidKioskPilotIntegrationTest extends CIUnitTestCase
         // PWA Manifest link
         $this->assertStringContainsString('rel="manifest" href="/manifest.json"', $body);
 
-        // Kiosk layout components
-        $this->assertStringContainsString('pin-entry-step', $body);
-        $this->assertStringContainsString('pin-keypad', $body);
-        $this->assertStringContainsString('kiosk-camera-section', $body);
-        $this->assertStringContainsString('pin-confirm-step', $body);
-        $this->assertStringContainsString('pin-success-step', $body);
+        // Kiosk layout components (Automated touchless face recognition)
+        $this->assertStringContainsString('scanner-video', $body);
+        $this->assertStringContainsString('scanner-canvas', $body);
+        $this->assertStringContainsString('face-scan-reticle', $body);
+        $this->assertStringContainsString('scanner-status-pill', $body);
+        $this->assertStringContainsString('punch-success-overlay', $body);
+        $this->assertStringContainsString('scanner-sleep-screen', $body);
 
         // Security headers & view checks
         $csp = $res->response()->getHeaderLine('Content-Security-Policy');

@@ -88,11 +88,11 @@ class UnifiedGatewayAndScannerAccessTest extends CIUnitTestCase
     {
         $result = $this->get('/');
         $result->assertStatus(200);
+        $result->assertSee('Edifies School');
         $result->assertSee('Staff Attendance Management System');
+        $result->assertSee('Administrator Sign In');
         $result->assertSee('Staff Sign In');
-        $result->assertSee('Launch Tablet Kiosk');
         $result->assertSee('Pair Scanner with 1-Time Code');
-        $result->assertSee('Backend Foundation Status');
     }
 
     // 2. Gateway auto-redirects active Admin session to /admin

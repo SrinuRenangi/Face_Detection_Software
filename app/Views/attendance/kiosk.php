@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#0f172a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <style>
+    <style <?= csp_style_nonce() ?>>
         body.kiosk-face-body {
             background-color: #090d16;
             color: #f8fafc;
