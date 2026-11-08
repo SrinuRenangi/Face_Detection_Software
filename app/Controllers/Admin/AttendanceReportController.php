@@ -444,6 +444,24 @@ class AttendanceReportController extends BaseController
                     $metrics['completed_shifts']++;
                 }
                 $metrics['total_days']++;
+
+                // Set display_status
+                if (!empty($rec['check_in_time']) && !empty($rec['check_out_time'])) {
+                    $rec['display_status'] = 'CHECKED_OUT';
+                } elseif (!empty($rec['check_in_time'])) {
+                    $rec['display_status'] = 'CHECKED_IN';
+                } else {
+                    $rec['display_status'] = 'ABSENT';
+                }
+
+                // Compute total_work_minutes
+                if (!empty($rec['check_in_time']) && !empty($rec['check_out_time'])) {
+                    $inTs  = strtotime($rec['check_in_time']);
+                    $outTs = strtotime($rec['check_out_time']);
+                    $rec['total_work_minutes'] = ($outTs > $inTs) ? (int) round(($outTs - $inTs) / 60) : 0;
+                } else {
+                    $rec['total_work_minutes'] = 0;
+                }
             }
             unset($rec);
         }
@@ -453,6 +471,11 @@ class AttendanceReportController extends BaseController
             ->select('id, employee_id, full_name, department, status')
             ->orderBy('employee_id', 'ASC')
             ->findAll();
+
+        foreach ($allStaff as &$s) {
+            $s['is_active'] = (($s['status'] ?? '') === 'ACTIVE');
+        }
+        unset($s);
 
         $data = [
             'tab'              => 'employee',

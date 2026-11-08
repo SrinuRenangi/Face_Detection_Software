@@ -53,6 +53,10 @@ class AttendanceController extends BaseController
             $currentDevice = $registeredDevices[0];
         }
 
+        if ($currentDevice) {
+            session()->set('kiosk_paired_device_id', $currentDevice['id']);
+        }
+
         return view('attendance/kiosk', [
             'pageTitle'         => 'Staff Attendance Kiosk',
             'registeredDevices' => $registeredDevices,

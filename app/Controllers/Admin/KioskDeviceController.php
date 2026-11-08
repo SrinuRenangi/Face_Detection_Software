@@ -49,15 +49,16 @@ class KioskDeviceController extends BaseController
         }
 
         $session = session();
-        $userRole = $session->get('admin_role') ?? 'ADMIN';
-        $userName = $session->get('admin_user_name') ?? 'Administrator';
+        $userRole = $session->get('admin_role') ?? 'ROLE_ADMIN';
+        $adminFullName = $session->get('admin_full_name') ?: ($session->get('admin_username') ?: 'Administrator');
 
         return view('admin/kiosks/index', [
             'pageTitle'       => 'Kiosk Terminal Management',
             'devices'         => $devices,
             'codesByDeviceId' => $codesByDeviceId,
             'userRole'        => $userRole,
-            'userName'        => $userName,
+            'adminFullName'   => $adminFullName,
+            'userName'        => $adminFullName,
         ]);
     }
 

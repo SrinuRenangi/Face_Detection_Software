@@ -346,9 +346,11 @@
             <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 500;">Attendance Kiosk &bull; Touchless Presence Verification System &bull; Terminal: <?= esc($currentDevice['device_identifier'] ?? 'Online') ?></span>
         </div>
 
-        <div class="kiosk-mode-badge">
-            <div style="width: 8px; height: 8px; border-radius: 50%; background: #34d399; box-shadow: 0 0 6px #34d399;"></div>
-            <span><?= ($currentDevice['terminal_mode'] ?? 'ENTRY_ONLY') === 'EXIT_ONLY' ? 'CHECK-OUT SCANNER' : 'CHECK-IN SCANNER' ?></span>
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <div class="kiosk-mode-badge">
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: #34d399; box-shadow: 0 0 6px #34d399;"></div>
+                <span><?= ($currentDevice['terminal_mode'] ?? 'ENTRY_ONLY') === 'EXIT_ONLY' ? 'CHECK-OUT SCANNER' : 'CHECK-IN SCANNER' ?></span>
+            </div>
         </div>
     </header>
 
@@ -381,9 +383,9 @@
                         <polyline points="20 6 9 17 4 12"></polyline>
                     </svg>
                 </div>
-                <div class="success-name" id="success-emp-name">Katherine Johnson</div>
-                <div class="success-action-badge" id="success-action-text">Check-In (Entry) Recorded</div>
-                <div class="success-time-text" id="success-time-text">07:45 PM</div>
+                <div class="success-name" id="success-emp-name">&mdash;</div>
+                <div class="success-action-badge" id="success-action-text">&mdash;</div>
+                <div class="success-time-text" id="success-time-text">&mdash;</div>
             </div>
         </div>
     </main>
@@ -398,8 +400,8 @@
     </div>
 
     <!-- Scripts: Face API & Dedicated Edge Scanner Engine -->
-    <script src="/js/face-api.js"></script>
-    <script src="/js/kiosk-face-attendance.js"></script>
-    <script src="/js/kiosk-clock.js"></script>
+    <script <?= csp_script_nonce() ?> src="/js/face-api.js"></script>
+    <script <?= csp_script_nonce() ?> src="/js/kiosk-face-attendance.js"></script>
+    <script <?= csp_script_nonce() ?> src="/js/kiosk-clock.js"></script>
 </body>
 </html>

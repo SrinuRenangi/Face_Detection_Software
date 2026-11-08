@@ -252,17 +252,6 @@
             <p class="brand-subtitle" style="font-size: 0.875rem; color: #64748b; margin: 0; font-weight: 500;">Staff Attendance Management System</p>
         </div>
 
-        <!-- Paired Device Recognition Banner -->
-        <?php if ($isPairedDevice && $pairedDeviceInfo): ?>
-            <div class="alert-paired" id="paired-device-banner" style="background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; padding: 0.85rem 1rem; border-radius: 8px; font-size: 0.85rem; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
-                <div>
-                    <strong>Authorized Scanner</strong>
-                    <div style="font-size: 0.75rem; color: #047857;"><?= esc($pairedDeviceInfo['device_name'] ?? 'Kiosk Terminal') ?></div>
-                </div>
-                <a href="/attendance" class="btn-open-scanner" style="font-size: 0.8rem; font-weight: 600; background: #059669; color: #ffffff; padding: 0.4rem 0.75rem; border-radius: 6px; text-decoration: none; white-space: nowrap;">Launch Scanner &rarr;</a>
-            </div>
-        <?php endif; ?>
-
         <!-- Error & Flash Alerts -->
         <?php if (session()->getFlashdata('error')): ?>
             <div class="alert-error" style="background-color: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.85rem; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem;">

@@ -4,8 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= esc($pageTitle) ?> &bull; Edifies School</title>
-    <link rel="stylesheet" href="/css/style.css">
-    <style>
+    <link rel="stylesheet" href="/css/style.css?v=<?= time() ?>">
+    <style <?= csp_style_nonce() ?>>
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+            line-height: 1.5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
         .kiosk-grid {
             display: grid;
             grid-template-columns: 360px 1fr;
@@ -40,10 +54,10 @@
     <?= view('admin/common/navbar', [
         'activeNav'     => 'kiosks',
         'userRole'      => $userRole ?? 'ROLE_ADMIN',
-        'adminFullName' => $userName ?? 'Administrator'
+        'adminFullName' => $adminFullName ?? $userName ?? 'Administrator'
     ]) ?>
 
-    <main class="container" style="padding-top: 1.5rem; padding-bottom: 3rem;">
+    <main class="container" style="flex: 1; padding-top: 2rem; padding-bottom: 3rem;">
         <?php if (session()->getFlashdata('success')): ?>
             <div class="alert alert-success" style="margin-bottom: 1rem; padding: 0.75rem 1rem; background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; border-radius: var(--radius-sm);">
                 <?= esc(session()->getFlashdata('success')) ?>

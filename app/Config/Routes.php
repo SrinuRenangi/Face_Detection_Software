@@ -97,6 +97,7 @@ $routes->group('api', static function ($routes) {
         $routes->post('attendance/sync', 'Api\KioskApiController::syncAttendance');
         $routes->get('face-templates', 'Api\KioskApiController::getFaceTemplates');
         $routes->post('face-punch', 'Api\KioskApiController::facePunch');
+        $routes->post('enroll-face', 'Api\KioskApiController::enrollFace');
     });
 
     // Admin API (Protected by AdminAuthFilter)

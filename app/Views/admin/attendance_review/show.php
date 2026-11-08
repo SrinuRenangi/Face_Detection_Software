@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= esc($pageTitle) ?> &bull; Edifies School</title>
     <link rel="stylesheet" href="/css/style.css">
-    <style>
+    <style <?= csp_style_nonce() ?>>
         .detail-card {
             background: var(--surface);
             border: 1px solid var(--border-color);
@@ -415,7 +415,7 @@
         </div>
     </main>
 
-    <script>
+    <script <?= csp_script_nonce() ?>>
         function confirmAction(form, actionType) {
             const reason = form.querySelector('textarea[name="reason"]').value.trim();
             if (reason.length < 5) {

@@ -115,10 +115,12 @@ class AuthController extends BaseController
             } elseif (ENVIRONMENT === 'development' || ENVIRONMENT === 'testing') {
                 $devAcceptedPasswords = [
                     'Admin@12345',
+                    'Admin@123',
                     'AdminPass@123',
                     'admin123',
                     'admin',
                     'Manager@12345',
+                    'Manager@123',
                     'ManagerPass@123',
                     'manager123',
                     'manager',

@@ -4,8 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Attendance History &amp; Reports &bull; Edifies School</title>
-    <link rel="stylesheet" href="/css/style.css">
-    <style>
+    <link rel="stylesheet" href="/css/style.css?v=<?= time() ?>">
+    <style <?= csp_style_nonce() ?>>
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+            line-height: 1.5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
         .report-header-tabs {
             display: flex;
             gap: 0.5rem;
@@ -214,11 +228,11 @@
 <body>
     <?= view('admin/common/navbar', [
         'activeNav'     => 'reports',
-        'userRole'      => session()->get('admin_role') ?? 'ROLE_ADMIN',
-        'adminFullName' => session()->get('admin_full_name') ?? 'Administrator'
+        'userRole'      => $userRole ?? session()->get('admin_role') ?? 'ROLE_ADMIN',
+        'adminFullName' => $adminFullName ?? session()->get('admin_full_name') ?? 'Administrator'
     ]) ?>
 
-    <main class="container" style="flex: 1; padding: 1.5rem 1rem 3rem;">
+    <main class="container" style="flex: 1; padding-top: 2rem; padding-bottom: 3rem;">
         <!-- Page Title & Intro -->
         <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
             <div>
@@ -632,7 +646,7 @@
                             <?php foreach ($allEmployees as $emp): ?>
                                 <option value="<?= esc($emp['id']) ?>" <?= ($selectedEmployee && $selectedEmployee['id'] === $emp['id']) ? 'selected' : '' ?>>
                                     <?= esc($emp['employee_id']) ?> &bull; <?= esc($emp['full_name']) ?> (<?= esc($emp['department'] ?? 'General') ?>)
-                                    <?= $emp['is_active'] ? '' : ' [INACTIVE]' ?>
+                                    <?= (!empty($emp['is_active']) || ($emp['status'] ?? '') === 'ACTIVE') ? '' : ' [INACTIVE]' ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -677,7 +691,7 @@
                             <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">
                                 Staff ID: <strong style="font-family: monospace; color: var(--primary);"><?= esc($selectedEmployee['employee_id']) ?></strong> &bull;
                                 Dept: <strong><?= esc($selectedEmployee['department'] ?? 'General') ?></strong> &bull;
-                                Status: <span class="badge <?= $selectedEmployee['is_active'] ? 'badge-success' : 'badge-danger' ?>"><?= $selectedEmployee['is_active'] ? 'Active' : 'Inactive' ?></span>
+                                Status: <span class="badge <?= !empty($selectedEmployee['is_active']) ? 'badge-success' : 'badge-danger' ?>"><?= !empty($selectedEmployee['is_active']) ? 'Active' : 'Inactive' ?></span>
                             </div>
                         </div>
                         <div style="display: flex; gap: 1rem;">
@@ -779,14 +793,14 @@
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <?php if ($r['is_incomplete']): ?>
+                                            <?php if (!empty($r['is_incomplete'])): ?>
                                                 <span class="badge-status badge-incomplete">Missing Exit</span>
-                                            <?php elseif ($r['display_status'] === 'CHECKED_OUT'): ?>
+                                            <?php elseif (($r['display_status'] ?? '') === 'CHECKED_OUT'): ?>
                                                 <span class="badge-status badge-checked-out">Completed</span>
-                                            <?php elseif ($r['display_status'] === 'CHECKED_IN'): ?>
+                                            <?php elseif (($r['display_status'] ?? '') === 'CHECKED_IN'): ?>
                                                 <span class="badge-status badge-checked-in">On Duty</span>
                                             <?php else: ?>
-                                                <span class="badge-status badge-absent"><?= esc($r['display_status']) ?></span>
+                                                <span class="badge-status badge-absent"><?= esc($r['display_status'] ?? 'ABSENT') ?></span>
                                             <?php endif; ?>
                                         </td>
                                     </tr>
@@ -826,7 +840,7 @@
         </div>
     </div>
 
-    <script>
+    <script <?= csp_script_nonce() ?>>
         function openPhotoModal(photoId, staffName, eventType, timestamp) {
             var backdrop = document.getElementById('photoModalBackdrop');
             var img = document.getElementById('photoModalImage');

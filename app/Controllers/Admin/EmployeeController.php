@@ -24,7 +24,7 @@ class EmployeeController extends BaseController
     protected function requireAdminRole(): bool
     {
         $role = session()->get('admin_role');
-        return $role === 'ROLE_ADMIN';
+        return in_array($role, ['ROLE_ADMIN', 'ADMIN'], true);
     }
 
     /**

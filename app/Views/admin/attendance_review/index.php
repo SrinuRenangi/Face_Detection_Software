@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= esc($pageTitle) ?> &bull; Edifies School</title>
     <link rel="stylesheet" href="/css/style.css">
-    <style>
+    <style <?= csp_style_nonce() ?>>
         .review-table-container {
             overflow-x: auto;
             border-radius: var(--radius-md);

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= esc($pageTitle) ?> &bull; Edifies School</title>
     <link rel="stylesheet" href="/css/style.css">
-    <style>
+    <style <?= csp_style_nonce() ?>>
         .lab-container {
             display: grid;
             grid-template-columns: 1.15fr 0.85fr;
@@ -501,8 +501,8 @@
     </main>
 
     <!-- Client-side Face API & Feasibility Script -->
-    <script src="/js/face-api.js"></script>
-    <script>
+    <script <?= csp_script_nonce() ?> src="/js/face-api.js"></script>
+    <script <?= csp_script_nonce() ?>>
         /**
          * STAGE 3 BIOMETRIC FEASIBILITY PROTOTYPE
          * Technology: Vanilla JavaScript, @vladmandic/face-api v1.7.15 (TFJS 4.x)

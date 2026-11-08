@@ -270,7 +270,7 @@ class KioskPairingController extends BaseController
                 $rawToken,
                 2592000,
                 '',
-                '/',
+                '/api/kiosk',
                 '',
                 $isSecure,
                 true, // HttpOnly

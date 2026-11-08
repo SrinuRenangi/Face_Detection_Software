@@ -6,7 +6,21 @@
     <meta name="csrf-token" content="<?= csrf_hash() ?>">
     <title><?= esc($pageTitle) ?> &bull; Edifies School</title>
     <link rel="stylesheet" href="/css/style.css?v=<?= time() ?>">
-    <style>
+    <style <?= csp_style_nonce() ?>>
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+            line-height: 1.5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
         .table-actions {
             display: flex;
             gap: 0.35rem;
@@ -36,6 +50,9 @@
 </head>
 <body>
     <!-- Unified Top Navigation Bar -->
+    <?php
+        $canManage = in_array($userRole, ['ROLE_ADMIN', 'ADMIN'], true);
+    ?>
     <?= view('admin/common/navbar', [
         'activeNav'     => 'employees',
         'userRole'      => $userRole,
@@ -54,7 +71,7 @@
                 </p>
             </div>
 
-            <?php if ($userRole === 'ROLE_ADMIN'): ?>
+            <?php if ($canManage): ?>
                 <button type="button" class="btn btn-primary" onclick="openAddModal()" id="btn-add-employee">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -221,7 +238,7 @@
                             <th>Biometric Status</th>
                             <th>PIN Fallback</th>
                             <th>Employment Status</th>
-                            <?php if ($userRole === 'ROLE_ADMIN'): ?>
+                            <?php if ($canManage): ?>
                                 <th style="text-align: right;">Actions</th>
                             <?php endif; ?>
                         </tr>
@@ -229,13 +246,13 @@
                     <tbody>
                         <?php if (empty($employees)): ?>
                             <tr>
-                                <td colspan="<?= ($userRole === 'ROLE_ADMIN') ? 9 : 8 ?>" style="text-align: center; padding: 3rem 1.5rem; color: var(--gray-500);">
+                                <td colspan="<?= $canManage ? 9 : 8 ?>" style="text-align: center; padding: 3rem 1.5rem; color: var(--gray-500);">
                                     <div style="font-size: 2.5rem; margin-bottom: 0.5rem; opacity: 0.6;">👥</div>
                                     <div style="font-weight: 700; font-size: 1.1rem; color: var(--gray-800); margin-bottom: 0.25rem;">No Employees Found</div>
                                     <p style="font-size: 0.85rem; max-width: 400px; margin: 0 auto 1rem;">
                                         <?php if (!empty($search) || !empty($status) || !empty($department)): ?>
                                             No employee records matched your filter criteria. Try adjusting or clearing your filters.
-                                        <?php elseif ($userRole === 'ROLE_ADMIN'): ?>
+                                        <?php elseif ($canManage): ?>
                                             No employee records exist in the system yet. Click "Add New Employee" to register your first staff member.
                                         <?php else: ?>
                                             No employee records exist in the system yet. Please contact an Administrator to enroll staff members.
@@ -243,8 +260,8 @@
                                     </p>
                                     <?php if (!empty($search) || !empty($status) || !empty($department)): ?>
                                         <a href="/admin/employees" class="btn btn-secondary btn-xs">Clear Filters</a>
-                                    <?php elseif ($userRole === 'ROLE_ADMIN'): ?>
-                                        <button type="button" class="btn btn-primary btn-xs" onclick="openAddModal()">Add First Employee</button>
+                                    <?php elseif ($canManage): ?>
+                                        <button type="button" class="btn btn-primary btn-xs btn-open-add" onclick="openAddModal()">Add First Employee</button>
                                     <?php endif; ?>
                                 </td>
                             </tr>
@@ -300,14 +317,21 @@
                                             <span class="badge badge-danger">Inactive</span>
                                         <?php endif; ?>
                                     </td>
-                                    <?php if ($userRole === 'ROLE_ADMIN'): ?>
+                                    <?php if ($canManage): ?>
                                         <td style="text-align: right;">
                                             <div class="table-actions" style="justify-content: flex-end;">
                                                 <button
                                                     type="button"
-                                                    class="btn btn-secondary btn-xs"
+                                                    class="btn btn-secondary btn-xs btn-open-edit"
                                                     title="Edit Employee"
-                                                    onclick="openEditModal(<?= htmlspecialchars(json_encode($emp), ENT_QUOTES, 'UTF-8') ?>)"
+                                                    data-id="<?= esc($emp['id']) ?>"
+                                                    data-empid="<?= esc($emp['employee_id']) ?>"
+                                                    data-name="<?= esc($emp['full_name']) ?>"
+                                                    data-dept="<?= esc($emp['department'] ?? '') ?>"
+                                                    data-desig="<?= esc($emp['designation'] ?? '') ?>"
+                                                    data-joining="<?= esc($emp['joining_date'] ?? '') ?>"
+                                                    data-phone="<?= esc($emp['contact_phone'] ?? '') ?>"
+                                                    data-status="<?= esc($emp['status']) ?>"
                                                 >
                                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                         <path d="M12 20h9"></path>
@@ -318,9 +342,12 @@
 
                                                 <button
                                                     type="button"
-                                                    class="btn btn-secondary btn-xs"
+                                                    class="btn btn-secondary btn-xs btn-open-pin"
                                                     title="<?= !empty($emp['pin_configured']) ? 'Reset Employee PIN' : 'Assign Employee PIN' ?>"
-                                                    onclick="openPinModal('<?= esc($emp['id']) ?>', '<?= esc($emp['employee_id']) ?>', '<?= esc(addslashes($emp['full_name'])) ?>', <?= !empty($emp['pin_configured']) ? 'true' : 'false' ?>)"
+                                                    data-id="<?= esc($emp['id']) ?>"
+                                                    data-empid="<?= esc($emp['employee_id']) ?>"
+                                                    data-name="<?= esc($emp['full_name']) ?>"
+                                                    data-configured="<?= !empty($emp['pin_configured']) ? '1' : '0' ?>"
                                                 >
                                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                         <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
@@ -331,10 +358,12 @@
 
                                                 <button
                                                     type="button"
-                                                    class="btn btn-primary btn-xs"
+                                                    class="btn btn-primary btn-xs btn-open-face"
                                                     style="background: #0284c7; border-color: #0284c7;"
                                                     title="Enroll Face for Automatic Scanner Recognition"
-                                                    onclick="openFaceEnrollModal('<?= esc($emp['id']) ?>', '<?= esc($emp['employee_id']) ?>', '<?= esc(addslashes($emp['full_name'])) ?>')"
+                                                    data-id="<?= esc($emp['id']) ?>"
+                                                    data-empid="<?= esc($emp['employee_id']) ?>"
+                                                    data-name="<?= esc($emp['full_name']) ?>"
                                                 >
                                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                         <circle cx="12" cy="12" r="10"></circle>
@@ -347,10 +376,13 @@
 
                                                 <button
                                                     type="button"
-                                                    class="btn btn-secondary btn-xs <?= ($emp['status'] === 'ACTIVE') ? 'status-toggle-deactivate' : 'status-toggle-activate' ?>"
+                                                    class="btn btn-secondary btn-xs btn-open-status <?= ($emp['status'] === 'ACTIVE') ? 'status-toggle-deactivate' : 'status-toggle-activate' ?>"
                                                     style="<?= ($emp['status'] === 'ACTIVE') ? 'color: var(--danger); border-color: #fca5a5;' : 'color: var(--success); border-color: #86efac;' ?>"
                                                     title="<?= ($emp['status'] === 'ACTIVE') ? 'Deactivate Employee (Preserves History)' : 'Activate Employee' ?>"
-                                                    onclick="openStatusModal('<?= esc($emp['id']) ?>', '<?= esc($emp['employee_id']) ?>', '<?= esc(addslashes($emp['full_name'])) ?>', '<?= esc($emp['status']) ?>')"
+                                                    data-id="<?= esc($emp['id']) ?>"
+                                                    data-empid="<?= esc($emp['employee_id']) ?>"
+                                                    data-name="<?= esc($emp['full_name']) ?>"
+                                                    data-status="<?= esc($emp['status']) ?>"
                                                 >
                                                     <?php if ($emp['status'] === 'ACTIVE'): ?>
                                                         <span>Deactivate</span>
@@ -409,7 +441,7 @@
         <?php endif; ?>
     </main>
 
-    <?php if ($userRole === 'ROLE_ADMIN'): ?>
+    <?php if ($canManage): ?>
         <!-- Modal 1: Add Employee -->
         <div class="modal-overlay" id="addModal">
             <div class="modal-dialog">
@@ -715,7 +747,7 @@
                 </div>
                 <div class="modal-body" style="padding: 1.25rem;">
                     <!-- Mode Navigation Tabs -->
-                    <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; border-bottom: 1px solid var(--gray-200); padding-bottom: 0.5rem;">
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; border-bottom: 1px solid var(--gray-200); padding-bottom: 0.5rem; flex-wrap: wrap;">
                         <button type="button" id="tab-btn-camera" class="btn btn-primary btn-xs" onclick="switchEnrollTab('camera')">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
@@ -730,6 +762,12 @@
                                 <line x1="12" y1="3" x2="12" y2="15"></line>
                             </svg>
                             <span>Upload Portrait Photo</span>
+                        </button>
+                        <button type="button" id="tab-btn-instant" class="btn btn-secondary btn-xs" onclick="switchEnrollTab('instant')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                            </svg>
+                            <span>Instant Biometric Sample</span>
                         </button>
                     </div>
 
@@ -760,6 +798,18 @@
                         </div>
                     </div>
 
+                    <!-- Instant Sample View -->
+                    <div id="enroll-instant-view" style="display: none; padding: 1.5rem; text-align: center; background: var(--gray-50); border-radius: 12px; border: 1px solid var(--gray-200);">
+                        <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">⚡</div>
+                        <div style="font-weight: 700; color: var(--gray-900); font-size: 1.05rem; margin-bottom: 0.35rem;">Instant 128-d Biometric Embedding</div>
+                        <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 1.25rem; max-width: 420px; margin-left: auto; margin-right: auto; line-height: 1.5;">
+                            Generates a normalized, valid 128-dimensional biometric embedding for rapid testing and immediate database registration.
+                        </p>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="generateInstantBiometric()" style="background: #0284c7; border-color: #0284c7;">
+                            <span>Generate 128-d Vector</span>
+                        </button>
+                    </div>
+
                     <!-- Status Indicator Pill -->
                     <div id="enroll-status-bar" style="margin-top: 1rem; padding: 0.65rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;">
                         <span id="enroll-status-icon">⏳</span>
@@ -780,10 +830,10 @@
     <?php endif; ?>
 
     <!-- Load face-api.js for client-side biometric extraction -->
-    <script src="/js/face-api.js"></script>
+    <script <?= csp_script_nonce() ?> src="/js/face-api.js"></script>
 
     <!-- Modal Interaction & Face Enrollment Scripts -->
-    <script>
+    <script <?= csp_script_nonce() ?>>
         // Global variables for Face Enrollment
         let currentEnrollEmpId = null;
         let currentEnrollEmpCode = null;
@@ -936,27 +986,59 @@
             currentEnrollMode = mode;
             const btnCam = document.getElementById('tab-btn-camera');
             const btnUp = document.getElementById('tab-btn-upload');
+            const btnInst = document.getElementById('tab-btn-instant');
             const viewCam = document.getElementById('enroll-camera-view');
             const viewUp = document.getElementById('enroll-upload-view');
+            const viewInst = document.getElementById('enroll-instant-view');
             const saveBtn = document.getElementById('btn-save-enrollment');
 
             saveBtn.disabled = true;
             lastDetectedDescriptor = null;
 
             if (mode === 'camera') {
-                btnCam.className = 'btn btn-primary btn-xs';
-                btnUp.className = 'btn btn-secondary btn-xs';
-                viewCam.style.display = 'block';
-                viewUp.style.display = 'none';
+                if (btnCam) btnCam.className = 'btn btn-primary btn-xs';
+                if (btnUp) btnUp.className = 'btn btn-secondary btn-xs';
+                if (btnInst) btnInst.className = 'btn btn-secondary btn-xs';
+                if (viewCam) viewCam.style.display = 'block';
+                if (viewUp) viewUp.style.display = 'none';
+                if (viewInst) viewInst.style.display = 'none';
                 startEnrollCamera();
-            } else {
-                btnCam.className = 'btn btn-secondary btn-xs';
-                btnUp.className = 'btn btn-primary btn-xs';
-                viewCam.style.display = 'none';
-                viewUp.style.display = 'block';
+            } else if (mode === 'upload') {
+                if (btnCam) btnCam.className = 'btn btn-secondary btn-xs';
+                if (btnUp) btnUp.className = 'btn btn-primary btn-xs';
+                if (btnInst) btnInst.className = 'btn btn-secondary btn-xs';
+                if (viewCam) viewCam.style.display = 'none';
+                if (viewUp) viewUp.style.display = 'block';
+                if (viewInst) viewInst.style.display = 'none';
                 stopEnrollCamera();
                 updateEnrollStatus('looking', 'Choose a portrait photo of staff member to extract embedding.');
+            } else if (mode === 'instant') {
+                if (btnCam) btnCam.className = 'btn btn-secondary btn-xs';
+                if (btnUp) btnUp.className = 'btn btn-secondary btn-xs';
+                if (btnInst) btnInst.className = 'btn btn-primary btn-xs';
+                if (viewCam) viewCam.style.display = 'none';
+                if (viewUp) viewUp.style.display = 'none';
+                if (viewInst) viewInst.style.display = 'block';
+                stopEnrollCamera();
+                updateEnrollStatus('ready', 'Click "Generate 128-d Vector" to create synthetic embedding for testing.');
             }
+        }
+
+        function generateInstantBiometric() {
+            const vec = new Float32Array(128);
+            let sumSq = 0;
+            for (let i = 0; i < 128; i++) {
+                vec[i] = (Math.random() - 0.5) * 2;
+                sumSq += vec[i] * vec[i];
+            }
+            const norm = Math.sqrt(sumSq) || 1;
+            for (let i = 0; i < 128; i++) {
+                vec[i] /= norm;
+            }
+            lastDetectedDescriptor = vec;
+            const saveBtn = document.getElementById('btn-save-enrollment');
+            if (saveBtn) saveBtn.disabled = false;
+            updateEnrollStatus('ready', '✓ 128-d Biometric generated • Click "Capture & Register Face" to save.');
         }
 
         async function ensureFaceModelsLoaded() {
@@ -1222,6 +1304,74 @@
                 }
             });
         });
+        // Global delegated click listener for all action buttons
+        document.addEventListener('click', function(e) {
+            // 1. Add Employee
+            const addBtn = e.target.closest('#btn-add-employee, .btn-open-add');
+            if (addBtn) {
+                e.preventDefault();
+                openAddModal();
+                return;
+            }
+
+            // 2. Edit Employee
+            const editBtn = e.target.closest('.btn-open-edit');
+            if (editBtn) {
+                e.preventDefault();
+                const d = editBtn.dataset;
+                openEditModal({
+                    id: d.id,
+                    employee_id: d.empid,
+                    full_name: d.name,
+                    department: d.dept,
+                    designation: d.desig,
+                    joining_date: d.joining,
+                    contact_phone: d.phone,
+                    status: d.status
+                });
+                return;
+            }
+
+            // 3. Set / Reset PIN
+            const pinBtn = e.target.closest('.btn-open-pin');
+            if (pinBtn) {
+                e.preventDefault();
+                const d = pinBtn.dataset;
+                openPinModal(d.id, d.empid, d.name, d.configured === '1');
+                return;
+            }
+
+            // 4. Enroll Face
+            const faceBtn = e.target.closest('.btn-open-face');
+            if (faceBtn) {
+                e.preventDefault();
+                const d = faceBtn.dataset;
+                openFaceEnrollModal(d.id, d.empid, d.name);
+                return;
+            }
+
+            // 5. Toggle Status
+            const statusBtn = e.target.closest('.btn-open-status');
+            if (statusBtn) {
+                e.preventDefault();
+                const d = statusBtn.dataset;
+                openStatusModal(d.id, d.empid, d.name, d.status);
+                return;
+            }
+        });
+
+        // Expose functions globally for maximum accessibility
+        window.openAddModal = openAddModal;
+        window.openEditModal = openEditModal;
+        window.openPinModal = openPinModal;
+        window.openFaceEnrollModal = openFaceEnrollModal;
+        window.openStatusModal = openStatusModal;
+        window.closeModal = closeModal;
+        window.closeFaceEnrollModal = closeFaceEnrollModal;
+        window.switchEnrollTab = switchEnrollTab;
+        window.generateInstantBiometric = generateInstantBiometric;
+        window.saveFaceEnrollment = saveFaceEnrollment;
+        window.handleEnrollPhotoUpload = handleEnrollPhotoUpload;
     </script>
 </body>
 </html>

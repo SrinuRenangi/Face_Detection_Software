@@ -1026,45 +1026,63 @@ class KioskApiController extends ResourceController
         $photoService = new \App\Services\AttendancePhotoService();
         $photoPayload = $json['photo_payload'] ?? null;
         if (!empty($photoPayload)) {
-            $imageBinary = null;
-            if (str_starts_with($photoPayload, 'data:image')) {
-                $parts = explode(',', $photoPayload, 2);
-                if (count($parts) === 2) {
-                    $imageBinary = base64_decode($parts[1]);
+            $imageBinary = $photoService->extractBinaryData($photoPayload);
+            if (!empty($imageBinary)) {
+                $storeResult = $photoService->storeValidatedPhoto($imageBinary);
+                if (!empty($storeResult['success'])) {
+                    $storedPhoto = $storeResult;
                 }
-            } else {
-                $imageBinary = base64_decode($photoPayload);
-            }
-
-            if ($imageBinary && strlen($imageBinary) >= 100) {
-                $storedPhoto = $photoService->processAndStoreSnapshot(
-                    $imageBinary,
-                    $employee['id'],
-                    $device->id,
-                    'FACIAL_SCANNER'
-                );
             }
         }
 
-        // Invoke AttendanceSyncService for authoritative transaction
+        // Delegate to canonical AttendanceSyncService
         $syncService = new \App\Services\AttendanceSyncService();
         $syncPayload = [
-            'client_uuid'      => $clientUuid,
-            'employee_id'      => $employee['id'],
-            'device_id'        => $device->id,
-            'timestamp'        => date('Y-m-d H:i:s'),
-            'terminal_mode'    => $device->terminal_mode,
-            'sync_source'      => 'DIRECT_ONLINE',
-            'device_epoch_id'  => $device->device_epoch_id,
+            'client_uuid'       => $clientUuid,
+            'employee_id'       => $employee['id'],
+            'device_id'         => $device->id,
+            'device_epoch_id'   => $device->device_epoch_id,
+            'terminal_mode'     => $device->terminal_mode,
+            'timestamp'         => date('Y-m-d H:i:s'),
+            'sync_source'       => 'DIRECT_ONLINE',
+            'confidence_score'  => $confidence ?: 0.98,
         ];
+        if ($storedPhoto) {
+            $syncPayload['photo_metadata'] = $storedPhoto;
+        }
 
-        $result = $syncService->syncEvent($syncPayload, $storedPhoto);
+        try {
+            $result = $syncService->processPunch($syncPayload);
+        } catch (\Throwable $e) {
+            if ($storedPhoto) {
+                $photoService->deletePhysicalFile($storedPhoto['storage_path']);
+            }
+            return $this->response->setStatusCode(500)->setJSON([
+                'status'  => 'error',
+                'code'    => 'TRANSACTION_FAILED',
+                'message' => 'Attendance transaction failed: ' . $e->getMessage(),
+            ]);
+        }
 
         if (isset($result['status']) && in_array($result['status'], ['INVALID_STATE_TRANSITION', 'SEQUENCE_ANOMALY'], true)) {
+            if ($storedPhoto) {
+                $photoService->deletePhysicalFile($storedPhoto['storage_path']);
+            }
             return $this->response->setStatusCode(422)->setJSON([
                 'status'  => 'error',
                 'code'    => 'QUARANTINED',
                 'message' => $result['message'] ?? 'Attendance event quarantined due to sequence anomaly.',
+            ]);
+        }
+
+        if (isset($result['status']) && $result['status'] === 'REJECTED_NO_OPEN_RECORD') {
+            if ($storedPhoto) {
+                $photoService->deletePhysicalFile($storedPhoto['storage_path']);
+            }
+            return $this->response->setStatusCode(422)->setJSON([
+                'status'  => 'error',
+                'code'    => 'REJECTED_NO_OPEN_RECORD',
+                'message' => 'Check-out scan rejected: No open check-in shift record exists for today.',
             ]);
         }
 
@@ -1091,6 +1109,75 @@ class KioskApiController extends ResourceController
             'recorded_at'    => date('h:i:s A'),
             'work_date'      => date('d M Y'),
             'message'        => "Attendance recorded: {$employee['full_name']} ({$displayAction})",
+        ]);
+    }
+
+    /**
+     * Rapid Kiosk Face Enrollment Endpoint
+     * Allows paired/authorized kiosk terminal to enroll face embedding for a staff member.
+     */
+    public function enrollFace()
+    {
+        $device = $this->request->device ?? null;
+        if (!$device) {
+            return $this->failUnauthorized('Device authorization context not established.');
+        }
+
+        $json = $this->request->getJSON(true) ?? $this->request->getPost();
+        $employeeId = trim((string) ($json['employee_id'] ?? ''));
+        $embedding = $json['embedding'] ?? null;
+
+        if (empty($employeeId)) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'status'  => 'error',
+                'message' => 'Employee ID is required.',
+            ]);
+        }
+
+        if (!is_array($embedding) || count($embedding) !== 128) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'status'  => 'error',
+                'message' => 'Invalid facial embedding. A 128-dimensional vector is required.',
+            ]);
+        }
+
+        $employeeModel = new \App\Models\EmployeeModel();
+        $employee = $employeeModel->find($employeeId);
+        if (!$employee) {
+            $employee = $employeeModel->where('employee_id', $employeeId)->first();
+        }
+
+        if (!$employee || $employee['status'] !== 'ACTIVE') {
+            return $this->response->setStatusCode(404)->setJSON([
+                'status'  => 'error',
+                'message' => 'Active employee not found.',
+            ]);
+        }
+
+        $qualityScore = (float) ($json['quality_score'] ?? 0.98);
+        $modelName = trim((string) ($json['model_name'] ?? 'face-api-resnet34'));
+
+        $templateModel = new \App\Models\EmployeeFaceTemplateModel();
+        $db = \Config\Database::connect();
+        $db->table('employee_face_templates')->where('employee_id', $employee['id'])->delete();
+
+        $templateId = (string) time() . '_' . bin2hex(random_bytes(6));
+        $templateModel->insert([
+            'id'                => $templateId,
+            'employee_id'       => $employee['id'],
+            'template_version'  => 'v1.0',
+            'vector_dimensions' => 128,
+            'embedding_data'    => json_encode($embedding),
+            'model_name'        => $modelName,
+            'quality_score'     => $qualityScore,
+            'registered_by'     => 'KIOSK_' . ($device->device_identifier ?? 'TERMINAL'),
+        ]);
+
+        return $this->respond([
+            'status'        => 'success',
+            'employee_id'   => $employee['id'],
+            'employee_name' => $employee['full_name'],
+            'message'       => "Biometric template registered for {$employee['full_name']}.",
         ]);
     }
 }

@@ -16,9 +16,11 @@
     let statusPill = null;
     let successCard = null;
     let sleepOverlay = null;
+    let unrecognizedPrompt = null;
     let faceMatcher = null;
     let enrolledStaffMap = new Map(); // employee_id -> { name, dept, code }
     let recentPunches = new Map(); // employee_id -> timestamp (cooldown)
+    let lastDetectedDescriptor = null;
     
     // Inactivity Sleep Timing
     let lastFaceSeenTime = Date.now();
@@ -135,8 +137,8 @@
             }
 
             if (labeledDescriptors.length > 0) {
-                // Distance threshold 0.55 corresponds to >85% confidence match
-                faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.55);
+                // Distance threshold 0.58 (standard for 128-d ResNet vectors)
+                faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.58);
             }
 
         } catch (err) {
@@ -193,6 +195,10 @@
                     ctx.clearRect(0, 0, canvasOverlay.width, canvasOverlay.height);
                 }
 
+                if (unrecognizedPrompt) {
+                    unrecognizedPrompt.style.display = 'none';
+                }
+
                 if (!isSleeping && !isProcessingPunch) {
                     if (!faceMatcher) {
                         updateStatus('waiting', 'No staff faces enrolled yet • Enroll staff in Admin > Staff Directory');
@@ -209,6 +215,8 @@
                 wakeUp();
             }
 
+            lastDetectedDescriptor = detection.descriptor;
+
             // Draw live tracking reticle on face in mirror canvas
             const box = detection.detection.box;
             const ctx = canvasOverlay ? canvasOverlay.getContext('2d') : null;
@@ -222,7 +230,7 @@
             }
 
             if (!faceMatcher) {
-                updateStatus('waiting', 'Face detected • Please enroll staff face in Admin > Staff Directory');
+                updateStatus('waiting', 'No staff faces enrolled in system • Enroll staff in Admin > Staff Directory');
                 return;
             }
 
@@ -253,7 +261,13 @@
                 // Legitimate match! Execute automated touchless punch
                 await recordFaceAttendance(empId, empInfo, confidencePercent);
             } else {
-                updateStatus('searching', 'Face detected • Verifying staff registry...');
+                if (ctx) {
+                    ctx.strokeStyle = '#f59e0b'; // Amber for unregistered face
+                    ctx.shadowColor = 'rgba(245, 158, 11, 0.8)';
+                    ctx.shadowBlur = 12;
+                    ctx.strokeRect(box.x, box.y, box.width, box.height);
+                }
+                updateStatus('searching', 'Face Detected • Staff Member Not Enrolled in System');
             }
 
         } catch (err) {
@@ -376,11 +390,40 @@
         if (timeEl) timeEl.textContent = `${data.date} • ${data.time}`;
 
         successCard.style.display = 'flex';
+        playSuccessChime();
     }
 
     function hideSuccessCard() {
         if (successCard) {
             successCard.style.display = 'none';
+        }
+    }
+
+    function playSuccessChime() {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            const ctx = new AudioContext();
+            const now = ctx.currentTime;
+
+            // Two-tone enterprise chime: 587.33 Hz (D5) -> 880 Hz (A5)
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(587.33, now);
+            osc.frequency.setValueAtTime(880.00, now + 0.12);
+
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.2, now + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.start(now);
+            osc.stop(now + 0.46);
+        } catch (e) {
+            // Audio context not allowed before user gesture, silent fail
         }
     }
 

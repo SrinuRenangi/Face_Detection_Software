@@ -60,14 +60,14 @@ class ContentSecurityPolicy extends BaseConfig
      *
      * @var list<string>|string
      */
-    public $scriptSrc = ['self', "'wasm-unsafe-eval'"];
+    public $scriptSrc = ['self', "'unsafe-inline'", "'wasm-unsafe-eval'"];
 
     /**
      * Specifies valid sources for JavaScript <script> elements.
      *
      * @var list<string>|string
      */
-    public array|string $scriptSrcElem = ['self', "'wasm-unsafe-eval'"];
+    public array|string $scriptSrcElem = ['self', "'unsafe-inline'", "'wasm-unsafe-eval'"];
 
     /**
      * Specifies valid sources for JavaScript inline event
@@ -75,7 +75,7 @@ class ContentSecurityPolicy extends BaseConfig
      *
      * @var list<string>|string
      */
-    public array|string $scriptSrcAttr = 'self';
+    public array|string $scriptSrcAttr = ['self', "'unsafe-inline'"];
 
     /**
      * Lists allowed stylesheets' URLs.
