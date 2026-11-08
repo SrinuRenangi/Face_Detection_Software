@@ -40,10 +40,11 @@ class Home extends BaseController
         // 3. Inspect if client has a paired kiosk device cookie
         $isPairedDevice = false;
         $pairedDeviceInfo = null;
-        $rawDeviceToken = $this->request->getCookie('edifies_kiosk_token');
+        $request = $this->request ?? service('request');
+        $rawDeviceToken = $request ? $request->getCookie('edifies_kiosk_token') : null;
 
-        if (empty($rawDeviceToken)) {
-            $cookieHeader = $this->request->getHeaderLine('Cookie');
+        if (empty($rawDeviceToken) && $request) {
+            $cookieHeader = $request->getHeaderLine('Cookie');
             if (!empty($cookieHeader) && preg_match('/(?:^|;\s*)edifies_kiosk_token=([^;]+)/', $cookieHeader, $matches)) {
                 $rawDeviceToken = trim($matches[1]);
             }
