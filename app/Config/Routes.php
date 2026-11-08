@@ -37,6 +37,7 @@ $routes->group('admin', ['filter' => 'adminAuth'], static function ($routes) {
     $routes->get('employees/(:segment)', 'Admin\EmployeeController::show/$1');
     $routes->post('employees/(:segment)/update', 'Admin\EmployeeController::update/$1', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN']);
     $routes->post('employees/(:segment)/pin', 'Admin\EmployeeController::setPin/$1', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN']);
+    $routes->post('employees/(:segment)/face-template', 'Admin\EmployeeController::enrollFace/$1', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN']);
     $routes->post('employees/(:segment)/toggle-status', 'Admin\EmployeeController::toggleStatus/$1', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN']);
     $routes->post('employees/(:segment)/delete', 'Admin\EmployeeController::delete/$1', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN']);
 

@@ -172,6 +172,14 @@
         }
 
         try {
+            // Keep canvas resolution synced to video feed
+            if (canvasOverlay && videoElement.videoWidth > 0) {
+                if (canvasOverlay.width !== videoElement.videoWidth || canvasOverlay.height !== videoElement.videoHeight) {
+                    canvasOverlay.width = videoElement.videoWidth;
+                    canvasOverlay.height = videoElement.videoHeight;
+                }
+            }
+
             // Detect single face with landmarks and 128-d descriptor
             const detection = await faceapi
                 .detectSingleFace(videoElement, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
@@ -179,8 +187,18 @@
                 .withFaceDescriptor();
 
             if (!detection) {
+                // Clear any residual tracking box when face leaves frame
+                if (canvasOverlay) {
+                    const ctx = canvasOverlay.getContext('2d');
+                    ctx.clearRect(0, 0, canvasOverlay.width, canvasOverlay.height);
+                }
+
                 if (!isSleeping && !isProcessingPunch) {
-                    updateStatus('ready', 'Stand in front of camera to mark attendance');
+                    if (!faceMatcher) {
+                        updateStatus('waiting', 'No staff faces enrolled yet • Enroll staff in Admin > Staff Directory');
+                    } else {
+                        updateStatus('ready', 'Touchless Scanner Active • Stand in front of camera');
+                    }
                 }
                 return;
             }
@@ -191,8 +209,20 @@
                 wakeUp();
             }
 
+            // Draw live tracking reticle on face in mirror canvas
+            const box = detection.detection.box;
+            const ctx = canvasOverlay ? canvasOverlay.getContext('2d') : null;
+            if (ctx) {
+                ctx.clearRect(0, 0, canvasOverlay.width, canvasOverlay.height);
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#38bdf8'; // Sky blue while analyzing
+                ctx.shadowColor = 'rgba(56, 189, 248, 0.6)';
+                ctx.shadowBlur = 10;
+                ctx.strokeRect(box.x, box.y, box.width, box.height);
+            }
+
             if (!faceMatcher) {
-                updateStatus('waiting', 'Face detected • Waiting for Admin staff face enrollment');
+                updateStatus('waiting', 'Face detected • Please enroll staff face in Admin > Staff Directory');
                 return;
             }
 
@@ -203,6 +233,14 @@
                 const empId = bestMatch.label;
                 const empInfo = enrolledStaffMap.get(empId) || { name: 'Staff Member' };
                 const confidencePercent = Math.round((1 - bestMatch.distance) * 100);
+
+                // Highlight tracking box in emerald green upon successful verification
+                if (ctx) {
+                    ctx.strokeStyle = '#22c55e';
+                    ctx.shadowColor = 'rgba(34, 197, 94, 0.8)';
+                    ctx.shadowBlur = 14;
+                    ctx.strokeRect(box.x, box.y, box.width, box.height);
+                }
 
                 // Check Cooldown: prevent rapid duplicate punches within 60 seconds
                 const lastPunch = recentPunches.get(empId) || 0;
@@ -323,6 +361,11 @@
 
     function showSuccessCard(data) {
         if (!successCard) return;
+
+        if (canvasOverlay) {
+            const ctx = canvasOverlay.getContext('2d');
+            ctx.clearRect(0, 0, canvasOverlay.width, canvasOverlay.height);
+        }
 
         const nameEl = document.getElementById('success-emp-name');
         const actionEl = document.getElementById('success-action-text');

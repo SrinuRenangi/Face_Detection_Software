@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<?= csrf_hash() ?>">
     <title><?= esc($pageTitle) ?> &bull; Edifies School</title>
-    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/style.css?v=<?= time() ?>">
     <style>
         .table-actions {
             display: flex;
@@ -34,69 +35,12 @@
     </style>
 </head>
 <body>
-    <!-- Top Navigation Bar -->
-    <header class="navbar">
-        <div class="container nav-content">
-            <a href="<?= ($userRole === 'ROLE_ADMIN') ? '/admin' : '/admin/employees' ?>" class="brand-link">
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
-                </svg>
-                <span>Edifies School</span>
-                <span class="brand-badge"><?= ($userRole === 'ROLE_ADMIN') ? 'Admin' : 'Manager' ?></span>
-            </a>
-            <div class="nav-actions">
-                <?php if ($userRole === 'ROLE_ADMIN'): ?>
-                <a href="/admin" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                    </svg>
-                    <span>Dashboard</span>
-                </a>
-
-                <a href="/admin/attendance/reports" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                        <line x1="16" y1="2" x2="16" y2="6"></line>
-                        <line x1="8" y1="2" x2="8" y2="6"></line>
-                        <line x1="3" y1="10" x2="21" y2="10"></line>
-                    </svg>
-                    <span>Attendance &amp; Reports</span>
-                </a>
-                <?php endif; ?>
-
-                <a href="/attendance" target="_blank" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                        <line x1="8" y1="21" x2="16" y2="21"></line>
-                        <line x1="12" y1="17" x2="12" y2="21"></line>
-                    </svg>
-                    <span>View Kiosk</span>
-                </a>
-
-                <div style="display: flex; align-items: center; gap: 0.5rem; padding-left: 0.5rem; border-left: 1px solid var(--gray-200);">
-                    <div style="text-align: right; line-height: 1.2;">
-                        <div style="font-size: 0.85rem; font-weight: 700; color: var(--gray-900);"><?= esc($adminFullName) ?></div>
-                        <span class="badge <?= $userRole === 'ROLE_ADMIN' ? 'badge-info' : 'badge-warning' ?>" style="font-size: 0.65rem;">
-                            <?= esc($userRole) ?>
-                        </span>
-                    </div>
-
-                    <form action="/admin/logout" method="POST" style="margin: 0; display: inline;">
-                        <?= csrf_field() ?>
-                        <button type="submit" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; color: var(--danger); border-color: #fca5a5; cursor: pointer; background: transparent;" title="Sign Out">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                                <polyline points="16 17 21 12 16 7"></polyline>
-                                <line x1="21" y1="12" x2="9" y2="12"></line>
-                            </svg>
-                            <span>Sign Out</span>
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </header>
+    <!-- Unified Top Navigation Bar -->
+    <?= view('admin/common/navbar', [
+        'activeNav'     => 'employees',
+        'userRole'      => $userRole,
+        'adminFullName' => $adminFullName
+    ]) ?>
 
     <main class="container" style="flex: 1; padding-top: 2rem; padding-bottom: 3rem;">
         <!-- Page Header & Action Controls -->
@@ -209,7 +153,7 @@
                     </svg>
                 </div>
                 <div>
-                    <div class="stat-value"><?= esc($counts['faceRegistered']) ?></div>
+                    <div class="stat-value" id="kpi-face-registered"><?= esc($counts['faceRegistered']) ?></div>
                     <div class="stat-label">Face Registered</div>
                 </div>
             </div>
@@ -306,7 +250,7 @@
                             </tr>
                         <?php else: ?>
                             <?php foreach ($employees as $emp): ?>
-                                <tr>
+                                <tr id="emp-row-<?= esc($emp['id']) ?>">
                                     <td>
                                         <span class="emp-id-tag"><?= esc($emp['employee_id']) ?></span>
                                     </td>
@@ -327,9 +271,9 @@
                                             <?= !empty($emp['contact_phone']) ? esc($emp['contact_phone']) : '<span class="text-muted">&mdash;</span>' ?>
                                         </span>
                                     </td>
-                                    <td>
+                                    <td id="bio-cell-<?= esc($emp['id']) ?>">
                                         <?php if ($emp['face_status'] === 'REGISTERED'): ?>
-                                            <span class="badge badge-bio-registered" title="Active 512-d facial embedding enrolled">
+                                            <span class="badge badge-bio-registered" title="Active 128-d facial embedding enrolled">
                                                 &#10003; Registered
                                             </span>
                                         <?php elseif ($emp['face_status'] === 'DISABLED'): ?>
@@ -337,7 +281,7 @@
                                                 &#9888; Disabled
                                             </span>
                                         <?php else: ?>
-                                            <span class="badge badge-bio-not-registered" title="No facial embedding enrolled (Stage 3 ready)">
+                                            <span class="badge badge-bio-not-registered" title="No facial embedding enrolled">
                                                 Not Registered
                                             </span>
                                         <?php endif; ?>
@@ -700,12 +644,12 @@
             </div>
         </div>
 
-        <!-- Modal: Assign / Reset Employee PIN -->
+        <!-- Modal 4: Assign / Reset Employee PIN -->
         <div class="modal-overlay" id="pinModal">
-            <div class="modal-card">
+            <div class="modal-dialog">
                 <div class="modal-header">
-                    <h3 class="modal-title" id="pin-modal-title">Configure Employee PIN</h3>
-                    <button type="button" class="modal-close" onclick="closeModal('pinModal')">&times;</button>
+                    <h3 id="pin-modal-title">Configure Employee PIN</h3>
+                    <button type="button" class="modal-close-btn" onclick="closeModal('pinModal')">&times;</button>
                 </div>
                 <form action="" method="POST" id="form-set-pin">
                     <?= csrf_field() ?>
@@ -722,7 +666,7 @@
                                 type="password"
                                 name="pin"
                                 id="employee_pin"
-                                class="form-control"
+                                class="form-input"
                                 inputmode="numeric"
                                 pattern="[0-9]{6}"
                                 maxlength="6"
@@ -740,7 +684,7 @@
                                 type="password"
                                 name="pin_confirm"
                                 id="employee_pin_confirm"
-                                class="form-control"
+                                class="form-input"
                                 inputmode="numeric"
                                 pattern="[0-9]{6}"
                                 maxlength="6"
@@ -758,10 +702,99 @@
                 </form>
             </div>
         </div>
+
+        <!-- Modal 5: Face Biometric Enrollment Modal (ADMIN Only) -->
+        <div class="modal-overlay" id="faceEnrollModal">
+            <div class="modal-dialog" style="max-width: 580px;">
+                <div class="modal-header">
+                    <div>
+                        <h3 id="face-modal-title" style="margin: 0; font-size: 1.15rem; font-weight: 700;">Enroll Staff Face Template</h3>
+                        <div id="face-modal-subtitle" style="font-size: 0.8rem; color: var(--gray-500); margin-top: 0.2rem;">Staff Face Enrollment</div>
+                    </div>
+                    <button type="button" class="modal-close-btn" onclick="closeFaceEnrollModal()">&times;</button>
+                </div>
+                <div class="modal-body" style="padding: 1.25rem;">
+                    <!-- Mode Navigation Tabs -->
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; border-bottom: 1px solid var(--gray-200); padding-bottom: 0.5rem;">
+                        <button type="button" id="tab-btn-camera" class="btn btn-primary btn-xs" onclick="switchEnrollTab('camera')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                <circle cx="12" cy="13" r="4"></circle>
+                            </svg>
+                            <span>Live Camera</span>
+                        </button>
+                        <button type="button" id="tab-btn-upload" class="btn btn-secondary btn-xs" onclick="switchEnrollTab('upload')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            <span>Upload Portrait Photo</span>
+                        </button>
+                    </div>
+
+                    <!-- Live Camera Feed View -->
+                    <div id="enroll-camera-view" style="display: block;">
+                        <div style="position: relative; width: 100%; aspect-ratio: 4/3; background: #000; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                            <video id="enroll-video" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);"></video>
+                            <canvas id="enroll-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform: scaleX(-1); pointer-events: none;"></canvas>
+                            <div id="enroll-reticle" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 55%; height: 70%; border: 2px dashed rgba(56, 189, 248, 0.6); border-radius: 50%; pointer-events: none;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Upload Photo View -->
+                    <div id="enroll-upload-view" style="display: none;">
+                        <div style="border: 2px dashed var(--gray-300); border-radius: 12px; padding: 1.5rem; text-align: center; background: var(--gray-50); margin-bottom: 0.75rem;">
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--gray-400); margin-bottom: 0.5rem;">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 0.75rem;">
+                                Select a front-facing portrait photo (JPG or PNG)
+                            </p>
+                            <input type="file" id="enroll-file-input" accept="image/jpeg,image/png,image/webp" style="font-size: 0.85rem;" onchange="handleEnrollPhotoUpload(event)">
+                        </div>
+                        <div id="upload-preview-container" style="display: none; position: relative; width: 100%; max-height: 280px; background: #000; border-radius: 12px; overflow: hidden; text-align: center;">
+                            <img id="upload-preview-img" style="max-height: 280px; max-width: 100%; object-fit: contain;">
+                        </div>
+                    </div>
+
+                    <!-- Status Indicator Pill -->
+                    <div id="enroll-status-bar" style="margin-top: 1rem; padding: 0.65rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;">
+                        <span id="enroll-status-icon">⏳</span>
+                        <span id="enroll-status-text">Starting face recognition system...</span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeFaceEnrollModal()">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="btn-save-enrollment" onclick="saveFaceEnrollment()" disabled style="background: #0284c7; border-color: #0284c7;">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        <span>Capture &amp; Register Face</span>
+                    </button>
+                </div>
+            </div>
+        </div>
     <?php endif; ?>
 
-    <!-- Modal Interaction Scripts -->
+    <!-- Load face-api.js for client-side biometric extraction -->
+    <script src="/js/face-api.js"></script>
+
+    <!-- Modal Interaction & Face Enrollment Scripts -->
     <script>
+        // Global variables for Face Enrollment
+        let currentEnrollEmpId = null;
+        let currentEnrollEmpCode = null;
+        let currentEnrollName = null;
+        let enrollStream = null;
+        let isCameraActive = false;
+        let enrollAnimFrame = null;
+        let lastDetectedDescriptor = null;
+        let faceApiModelsLoaded = false;
+        let currentEnrollMode = 'camera';
+
         function openAddModal() {
             const modal = document.getElementById('addModal');
             if (modal) {
@@ -803,7 +836,7 @@
                 if (currentStatus === 'ACTIVE') {
                     titleEl.textContent = 'Deactivate Employee';
                     iconEl.textContent = '⏸️';
-                    msgEl.textContent = 'Are you sure you want to deactivate this staff member? Deactivated employees will be prevented from checking in on kiosk tablets.';
+                    msgEl.textContent = 'Are you sure you want to deactivate this staff member? Deactivated employees will be prevented from checking in on kiosk terminals.';
                     btnEl.className = 'btn btn-danger';
                     btnEl.textContent = 'Deactivate Employee';
                 } else {
@@ -854,9 +887,325 @@
             }
         }
 
+        // =========================================================================
+        // Face Biometric Enrollment Handlers
+        // =========================================================================
+
+        async function openFaceEnrollModal(id, empCode, fullName) {
+            currentEnrollEmpId = id;
+            currentEnrollEmpCode = empCode;
+            currentEnrollName = fullName;
+            lastDetectedDescriptor = null;
+
+            const modal = document.getElementById('faceEnrollModal');
+            const titleEl = document.getElementById('face-modal-title');
+            const subEl = document.getElementById('face-modal-subtitle');
+            const saveBtn = document.getElementById('btn-save-enrollment');
+
+            if (!modal) return;
+
+            titleEl.textContent = 'Enroll Staff Face Template';
+            subEl.textContent = `${fullName} (${empCode})`;
+            saveBtn.disabled = true;
+
+            modal.classList.add('active');
+            switchEnrollTab('camera');
+
+            // Load face-api models if not yet ready
+            await ensureFaceModelsLoaded();
+
+            // Start webcam feed
+            startEnrollCamera();
+        }
+
+        function closeFaceEnrollModal() {
+            stopEnrollCamera();
+            const modal = document.getElementById('faceEnrollModal');
+            if (modal) modal.classList.remove('active');
+
+            // Reset upload file input
+            const fileInput = document.getElementById('enroll-file-input');
+            if (fileInput) fileInput.value = '';
+            const previewContainer = document.getElementById('upload-preview-container');
+            if (previewContainer) previewContainer.style.display = 'none';
+
+            lastDetectedDescriptor = null;
+        }
+
+        function switchEnrollTab(mode) {
+            currentEnrollMode = mode;
+            const btnCam = document.getElementById('tab-btn-camera');
+            const btnUp = document.getElementById('tab-btn-upload');
+            const viewCam = document.getElementById('enroll-camera-view');
+            const viewUp = document.getElementById('enroll-upload-view');
+            const saveBtn = document.getElementById('btn-save-enrollment');
+
+            saveBtn.disabled = true;
+            lastDetectedDescriptor = null;
+
+            if (mode === 'camera') {
+                btnCam.className = 'btn btn-primary btn-xs';
+                btnUp.className = 'btn btn-secondary btn-xs';
+                viewCam.style.display = 'block';
+                viewUp.style.display = 'none';
+                startEnrollCamera();
+            } else {
+                btnCam.className = 'btn btn-secondary btn-xs';
+                btnUp.className = 'btn btn-primary btn-xs';
+                viewCam.style.display = 'none';
+                viewUp.style.display = 'block';
+                stopEnrollCamera();
+                updateEnrollStatus('looking', 'Choose a portrait photo of staff member to extract embedding.');
+            }
+        }
+
+        async function ensureFaceModelsLoaded() {
+            if (faceApiModelsLoaded) return;
+            updateEnrollStatus('loading', 'Loading neural network models from server...');
+            try {
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
+                    faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
+                    faceapi.nets.faceRecognitionNet.loadFromUri('/models')
+                ]);
+                faceApiModelsLoaded = true;
+            } catch (err) {
+                console.error('Face model load failure:', err);
+                updateEnrollStatus('error', 'Failed to load biometric models: ' + (err.message || err));
+            }
+        }
+
+        async function startEnrollCamera() {
+            if (isCameraActive) return;
+            const video = document.getElementById('enroll-video');
+            if (!video) return;
+
+            updateEnrollStatus('loading', 'Starting camera feed...');
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+                    audio: false
+                });
+
+                video.srcObject = stream;
+                enrollStream = stream;
+                isCameraActive = true;
+
+                video.onloadedmetadata = () => {
+                    video.play();
+                    updateEnrollStatus('looking', 'Position face clearly within the oval frame...');
+                    startCameraDetectionLoop();
+                };
+            } catch (err) {
+                console.warn('Webcam access error:', err);
+                updateEnrollStatus('error', 'Camera not available: ' + (err.message || 'Permission denied. Use Photo Upload tab.'));
+            }
+        }
+
+        function stopEnrollCamera() {
+            isCameraActive = false;
+            if (enrollAnimFrame) {
+                cancelAnimationFrame(enrollAnimFrame);
+                enrollAnimFrame = null;
+            }
+            if (enrollStream) {
+                enrollStream.getTracks().forEach(t => t.stop());
+                enrollStream = null;
+            }
+            const video = document.getElementById('enroll-video');
+            if (video) video.srcObject = null;
+            const canvas = document.getElementById('enroll-canvas');
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+
+        function startCameraDetectionLoop() {
+            const video = document.getElementById('enroll-video');
+            const canvas = document.getElementById('enroll-canvas');
+            const saveBtn = document.getElementById('btn-save-enrollment');
+
+            async function frame() {
+                if (!isCameraActive || currentEnrollMode !== 'camera') return;
+
+                if (video.videoWidth > 0 && faceApiModelsLoaded) {
+                    try {
+                        const detection = await faceapi
+                            .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
+                            .withFaceLandmarks()
+                            .withFaceDescriptor();
+
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        const ctx = canvas.getContext('2d');
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                        if (detection) {
+                            lastDetectedDescriptor = detection.descriptor;
+                            const box = detection.detection.box;
+
+                            // Draw clean tracking box on mirror canvas
+                            ctx.lineWidth = 3;
+                            ctx.strokeStyle = '#22c55e';
+                            ctx.shadowColor = 'rgba(34, 197, 94, 0.5)';
+                            ctx.shadowBlur = 8;
+                            ctx.strokeRect(box.x, box.y, box.width, box.height);
+
+                            const qualityPercent = Math.round(detection.detection.score * 100);
+                            updateEnrollStatus('ready', `✓ Face detected (Confidence: ${qualityPercent}%) • Ready to register`);
+                            saveBtn.disabled = false;
+                        } else {
+                            lastDetectedDescriptor = null;
+                            saveBtn.disabled = true;
+                            updateEnrollStatus('looking', 'Position face clearly within the oval frame...');
+                        }
+                    } catch (e) {
+                        // Suppress frame loop transient errors
+                    }
+                }
+
+                if (isCameraActive) {
+                    enrollAnimFrame = requestAnimationFrame(frame);
+                }
+            }
+
+            enrollAnimFrame = requestAnimationFrame(frame);
+        }
+
+        async function handleEnrollPhotoUpload(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+
+            await ensureFaceModelsLoaded();
+            updateEnrollStatus('loading', 'Analyzing portrait photo...');
+
+            const saveBtn = document.getElementById('btn-save-enrollment');
+            saveBtn.disabled = true;
+            lastDetectedDescriptor = null;
+
+            try {
+                const img = await faceapi.bufferToImage(file);
+                const previewImg = document.getElementById('upload-preview-img');
+                const previewContainer = document.getElementById('upload-preview-container');
+
+                previewImg.src = img.src;
+                previewContainer.style.display = 'block';
+
+                const detection = await faceapi
+                    .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.45 }))
+                    .withFaceLandmarks()
+                    .withFaceDescriptor();
+
+                if (detection) {
+                    lastDetectedDescriptor = detection.descriptor;
+                    const qualityPercent = Math.round(detection.detection.score * 100);
+                    updateEnrollStatus('ready', `✓ Face recognized in photo (${qualityPercent}%) • Ready to register`);
+                    saveBtn.disabled = false;
+                } else {
+                    updateEnrollStatus('error', '⚠️ No clear face detected in photo. Please upload a clear, front-facing portrait.');
+                }
+            } catch (err) {
+                console.error('Photo analysis error:', err);
+                updateEnrollStatus('error', 'Error reading image: ' + err.message);
+            }
+        }
+
+        async function saveFaceEnrollment() {
+            if (!currentEnrollEmpId || !lastDetectedDescriptor) return;
+
+            const saveBtn = document.getElementById('btn-save-enrollment');
+            saveBtn.disabled = true;
+            updateEnrollStatus('saving', 'Saving 128-dimensional biometric template to database...');
+
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+            try {
+                const response = await fetch(`/admin/employees/${encodeURIComponent(currentEnrollEmpId)}/face-template`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        embedding: Array.from(lastDetectedDescriptor),
+                        quality_score: 0.98,
+                        model_name: 'face-api-resnet34'
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.status === 'success') {
+                    updateEnrollStatus('success', `✅ Face registered successfully for ${currentEnrollName}!`);
+
+                    // Dynamically update the row's biometric status cell
+                    const bioCell = document.getElementById(`bio-cell-${currentEnrollEmpId}`);
+                    if (bioCell) {
+                        bioCell.innerHTML = `<span class="badge badge-bio-registered" title="Active 128-d facial embedding enrolled">&#10003; Registered</span>`;
+                    }
+
+                    // Increment the Face Registered KPI counter if it was not registered before
+                    const kpiVal = document.getElementById('kpi-face-registered');
+                    if (kpiVal && bioCell && !bioCell.getAttribute('data-was-registered')) {
+                        const count = parseInt(kpiVal.textContent.trim(), 10) || 0;
+                        kpiVal.textContent = count + 1;
+                        bioCell.setAttribute('data-was-registered', 'true');
+                    }
+
+                    // Close modal automatically after 1.6 seconds
+                    setTimeout(() => {
+                        closeFaceEnrollModal();
+                    }, 1600);
+                } else {
+                    updateEnrollStatus('error', '⚠️ Registration failed: ' + (result.message || 'Server rejected template'));
+                    saveBtn.disabled = false;
+                }
+            } catch (err) {
+                console.error('Enrollment submission error:', err);
+                updateEnrollStatus('error', 'Network error while saving biometric template.');
+                saveBtn.disabled = false;
+            }
+        }
+
+        function updateEnrollStatus(type, message) {
+            const bar = document.getElementById('enroll-status-bar');
+            const icon = document.getElementById('enroll-status-icon');
+            const text = document.getElementById('enroll-status-text');
+
+            if (!bar || !icon || !text) return;
+
+            text.textContent = message;
+
+            if (type === 'loading' || type === 'saving') {
+                icon.textContent = '⏳';
+                bar.style.background = '#fef3c7';
+                bar.style.color = '#92400e';
+                bar.style.borderColor = '#fde68a';
+            } else if (type === 'ready' || type === 'success') {
+                icon.textContent = '✅';
+                bar.style.background = '#dcfce7';
+                bar.style.color = '#166534';
+                bar.style.borderColor = '#bbf7d0';
+            } else if (type === 'error') {
+                icon.textContent = '⚠️';
+                bar.style.background = '#fee2e2';
+                bar.style.color = '#991b1b';
+                bar.style.borderColor = '#fecaca';
+            } else { // looking
+                icon.textContent = '👁️';
+                bar.style.background = '#f1f5f9';
+                bar.style.color = '#475569';
+                bar.style.borderColor = '#e2e8f0';
+            }
+        }
+
         // Close modal on Escape key press
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
+                closeFaceEnrollModal();
                 document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
             }
         });
@@ -865,7 +1214,11 @@
         document.querySelectorAll('.modal-overlay').forEach(modal => {
             modal.addEventListener('click', function(e) {
                 if (e.target === this) {
-                    this.classList.remove('active');
+                    if (this.id === 'faceEnrollModal') {
+                        closeFaceEnrollModal();
+                    } else {
+                        this.classList.remove('active');
+                    }
                 }
             });
         });

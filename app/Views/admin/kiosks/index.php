@@ -37,45 +37,11 @@
     </style>
 </head>
 <body>
-    <header class="navbar">
-        <div class="container nav-content">
-            <a href="/admin" class="brand-link">
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
-                </svg>
-                <span>Edifies School</span>
-                <span class="brand-badge">Admin</span>
-            </a>
-            <div class="nav-actions">
-                <a href="/admin/dashboard" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
-                    <span>Dashboard</span>
-                </a>
-                <a href="/admin/employees" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
-                    <span>Staff Directory</span>
-                </a>
-                <a href="/admin/kiosks" class="btn btn-primary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
-                    <span>Kiosk Devices</span>
-                </a>
-                <a href="/attendance" target="_blank" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
-                    <span>View Kiosk</span>
-                </a>
-
-                <div style="display: flex; align-items: center; gap: 0.5rem; padding-left: 0.5rem; border-left: 1px solid var(--gray-200);">
-                    <div style="text-align: right; line-height: 1.2;">
-                        <div style="font-size: 0.85rem; font-weight: 700; color: var(--gray-900);"><?= esc($userName) ?></div>
-                        <span class="badge badge-info" style="font-size: 0.65rem;"><?= esc($userRole) ?></span>
-                    </div>
-
-                    <form action="/admin/logout" method="POST" style="margin: 0; display: inline;">
-                        <?= csrf_field() ?>
-                        <button type="submit" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; color: var(--danger); border-color: #fca5a5; cursor: pointer; background: transparent;" title="Sign Out">
-                            Sign Out
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </header>
+    <?= view('admin/common/navbar', [
+        'activeNav'     => 'kiosks',
+        'userRole'      => $userRole ?? 'ROLE_ADMIN',
+        'adminFullName' => $userName ?? 'Administrator'
+    ]) ?>
 
     <main class="container" style="padding-top: 1.5rem; padding-bottom: 3rem;">
         <?php if (session()->getFlashdata('success')): ?>

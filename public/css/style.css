@@ -1965,3 +1965,166 @@ body.kiosk-face-body {
     0%, 100% { opacity: 0.5; transform: scale(0.98); }
     50% { opacity: 1; transform: scale(1.02); }
 }
+
+/* ==============================================================================
+   Unified Admin & Manager Navigation Bar (Global)
+   ============================================================================== */
+
+.dash-navbar {
+    background-color: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+    width: 100%;
+}
+
+.dash-nav-container {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 4.25rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.dash-brand,
+.dash-navbar .brand-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+    color: #0f172a;
+    font-weight: 700;
+    font-size: 1.15rem;
+}
+
+.dash-brand:hover,
+.dash-navbar .brand-link:hover {
+    color: #1e40af;
+}
+
+.dash-brand-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+    color: #ffffff;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.dash-brand-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.2rem 0.55rem;
+    border-radius: 9999px;
+    background-color: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #dbeafe;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.dash-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.dash-nav-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.5rem 0.9rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #475569;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: all 0.15s ease-in-out;
+    border: 1px solid transparent;
+}
+
+.dash-nav-item:hover {
+    color: #1e40af;
+    background-color: #f1f5f9;
+}
+
+.dash-nav-item.active {
+    color: #1e40af;
+    background-color: #eff6ff;
+    border-color: #dbeafe;
+    font-weight: 700;
+}
+
+.dash-user-section {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding-left: 0.75rem;
+    border-left: 1px solid #e2e8f0;
+}
+
+.dash-user-info {
+    text-align: right;
+    line-height: 1.25;
+}
+
+.dash-user-name {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.dash-user-role {
+    font-size: 0.7rem;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.btn-signout {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #dc2626;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: all 0.15s ease-in-out;
+}
+
+.btn-signout:hover {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+@media (max-width: 900px) {
+    .dash-nav-container {
+        padding: 0.75rem 1rem;
+        min-height: auto;
+    }
+    .dash-nav-links {
+        width: 100%;
+        justify-content: flex-start;
+        gap: 0.35rem;
+    }
+    .dash-user-section {
+        margin-left: auto;
+        padding-left: 0;
+        border-left: none;
+    }
+}
+

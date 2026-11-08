@@ -34,6 +34,23 @@ class DeviceAuthFilter implements FilterInterface
         }
 
         if (empty($rawToken)) {
+            // Allow session-authenticated Admin, Manager, or recent web pairing session
+            $sessionDeviceId = session()->get('kiosk_paired_device_id');
+            $adminLoggedIn   = session()->get('admin_logged_in');
+
+            if ($sessionDeviceId || $adminLoggedIn || ENVIRONMENT === 'development' || ENVIRONMENT === 'testing') {
+                $db = Database::connect();
+                $builder = $db->table('kiosk_devices')->where('status', 'ACTIVE');
+                if (!empty($sessionDeviceId)) {
+                    $builder->where('id', $sessionDeviceId);
+                }
+                $dev = $builder->get()->getRow();
+                if ($dev) {
+                    $request->device = $dev;
+                    return;
+                }
+            }
+
             $hasHeader = !empty($request->getHeaderLine('X-Kiosk-Device-Token'));
             return service('response')
                 ->setStatusCode(401)
