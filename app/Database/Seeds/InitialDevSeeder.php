@@ -10,12 +10,16 @@ class InitialDevSeeder extends Seeder
     {
         $now = date('Y-m-d H:i:s');
 
-        // Initial Admin Accounts
+        $adminPassword   = env('INITIAL_ADMIN_PASSWORD', bin2hex(random_bytes(8)));
+        $managerPassword = env('INITIAL_MANAGER_PASSWORD', bin2hex(random_bytes(8)));
+
+        // Initial Admin Accounts (Passwords loaded from environment and hashed with Bcrypt)
         $adminData = [
             [
                 'id'            => 'a0000000-0000-0000-0000-000000000001',
-                'username'      => 'admin',
-                'password_hash' => password_hash('Admin@12345', PASSWORD_BCRYPT),
+                'username'      => env('INITIAL_ADMIN_USER', 'admin'),
+                'email'         => env('INITIAL_ADMIN_EMAIL', 'admin@edifies.school'),
+                'password_hash' => password_hash($adminPassword, PASSWORD_BCRYPT),
                 'full_name'     => 'System Administrator',
                 'role'          => 'ROLE_ADMIN',
                 'is_active'     => 1,
@@ -24,8 +28,9 @@ class InitialDevSeeder extends Seeder
             ],
             [
                 'id'            => 'a0000000-0000-0000-0000-000000000002',
-                'username'      => 'manager',
-                'password_hash' => password_hash('Manager@12345', PASSWORD_BCRYPT),
+                'username'      => env('INITIAL_MANAGER_USER', 'manager'),
+                'email'         => env('INITIAL_MANAGER_EMAIL', 'manager@edifies.school'),
+                'password_hash' => password_hash($managerPassword, PASSWORD_BCRYPT),
                 'full_name'     => 'Operations Manager',
                 'role'          => 'ROLE_MANAGER',
                 'is_active'     => 1,

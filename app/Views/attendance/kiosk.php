@@ -486,7 +486,7 @@
         window.__KIOSK_TIMEZONE__ = 'Asia/Kolkata';
     </script>
     <script <?= csp_script_nonce() ?> src="/js/face-api.js"></script>
-    <script <?= csp_script_nonce() ?> src="/js/kiosk-face-attendance.js"></script>
-    <script <?= csp_script_nonce() ?> src="/js/kiosk-clock.js"></script>
+    <script <?= csp_script_nonce() ?> src="/js/kiosk-face-attendance.js?v=<?= file_exists(FCPATH . 'js/kiosk-face-attendance.js') ? filemtime(FCPATH . 'js/kiosk-face-attendance.js') : time() ?>"></script>
+    <script <?= csp_script_nonce() ?> src="/js/kiosk-clock.js?v=<?= file_exists(FCPATH . 'js/kiosk-clock.js') ? filemtime(FCPATH . 'js/kiosk-clock.js') : time() ?>"></script>
 </body>
 </html>

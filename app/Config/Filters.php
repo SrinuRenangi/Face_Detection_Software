@@ -38,6 +38,7 @@ class Filters extends BaseFilters
         'deviceAuth'    => \App\Filters\DeviceAuthFilter::class,
         'rateLimit'     => \App\Filters\RateLimitFilter::class,
         'httpsEnforce'  => \App\Filters\HttpsEnforcementFilter::class,
+        'killswitch'    => \App\Filters\SystemKillSwitchFilter::class,
     ];
 
     /**
@@ -75,6 +76,7 @@ class Filters extends BaseFilters
      */
     public array $globals = [
         'before' => [
+            'killswitch',
             'httpsEnforce',
             // 'honeypot',
             'csrf' => [
@@ -86,8 +88,8 @@ class Filters extends BaseFilters
             // 'invalidchars',
         ],
         'after' => [
+            'secureheaders',
             // 'honeypot',
-            // 'secureheaders',
             // 'toolbar' => [
             //     'except' => [
             //         'api/*',

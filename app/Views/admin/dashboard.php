@@ -252,14 +252,47 @@
 
         .audit-action-badge {
             display: inline-block;
-            font-size: 0.7rem;
+            font-size: 0.72rem;
             font-weight: 600;
-            padding: 0.2rem 0.5rem;
+            padding: 0.25rem 0.6rem;
             border-radius: 6px;
+            white-space: nowrap;
+        }
+
+        .badge-success {
+            background: #ecfdf5;
+            color: #047857;
+            border: 1px solid #a7f3d0;
+        }
+
+        .badge-primary {
             background: #eff6ff;
             color: #1d4ed8;
-            border: 1px solid #dbeafe;
-            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            border: 1px solid #bfdbfe;
+        }
+
+        .badge-info {
+            background: #f0f9ff;
+            color: #0284c7;
+            border: 1px solid #bae6fd;
+        }
+
+        .badge-warning {
+            background: #fffbeb;
+            color: #b45309;
+            border: 1px solid #fde68a;
+        }
+
+        .badge-danger {
+            background: #fef2f2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+        }
+
+        .badge-neutral {
+            background: #f8fafc;
+            color: #475569;
+            border: 1px solid #e2e8f0;
         }
 
         /* Footer */
@@ -528,39 +561,37 @@
             </div>
         </div>
 
-        <!-- Recent Audit Events Ledger -->
+        <!-- Recent Administrative Activity -->
         <div class="dash-section">
             <div class="section-header">
-                <h2 class="section-title">Recent Activity Ledger</h2>
-                <p class="section-subtitle">Security log of recent administrative actions, device authentications, and system events</p>
+                <h2 class="section-title">Recent Administrative Activity</h2>
+                <p class="section-subtitle">Summary of staff directory operations, biometric enrollments, and system sign-ins</p>
             </div>
 
             <div class="table-responsive">
                 <table class="audit-table">
                     <thead>
                         <tr>
-                            <th>Timestamp</th>
-                            <th>User</th>
-                            <th>Action</th>
-                            <th>Details</th>
-                            <th>IP Address</th>
+                            <th style="width: 180px;">Date &amp; Time</th>
+                            <th style="width: 150px;">User</th>
+                            <th style="width: 160px;">Activity</th>
+                            <th>Description</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($recentAudits)): ?>
                             <tr>
-                                <td colspan="5" style="text-align: center; color: #94a3b8; padding: 2rem;">
-                                    No audit entries recorded yet.
+                                <td colspan="4" style="text-align: center; color: #94a3b8; padding: 2rem;">
+                                    No administrative activity recorded yet.
                                 </td>
                             </tr>
                         <?php else: ?>
                             <?php foreach ($recentAudits as $audit): ?>
                                 <tr>
-                                    <td style="white-space: nowrap; font-size: 0.8rem; color: #64748b;"><?= esc($audit['created_at']) ?></td>
-                                    <td><strong><?= esc($audit['actor_username']) ?></strong></td>
-                                    <td><span class="audit-action-badge"><?= esc($audit['action']) ?></span></td>
-                                    <td style="color: #334155;"><?= esc($audit['details']) ?></td>
-                                    <td style="font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.8rem; color: #64748b;"><?= esc($audit['ip_address']) ?></td>
+                                    <td style="white-space: nowrap; font-size: 0.8rem; color: #64748b; font-weight: 500;"><?= esc($audit['created_at']) ?></td>
+                                    <td><strong style="color: #0f172a; font-size: 0.85rem;"><?= esc($audit['actor_display']) ?></strong></td>
+                                    <td><span class="audit-action-badge <?= esc($audit['badge_class']) ?>"><?= esc($audit['action_label']) ?></span></td>
+                                    <td style="color: #334155; line-height: 1.5; font-size: 0.85rem;"><?= $audit['details_html'] ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php endif; ?>

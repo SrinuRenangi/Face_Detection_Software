@@ -15,6 +15,7 @@ class EmployeeModel extends Model
         'id',
         'employee_id',
         'full_name',
+        'gender',
         'department',
         'designation',
         'joining_date',
@@ -96,20 +97,12 @@ class EmployeeModel extends Model
                     WHEN e.status = 'INACTIVE' AND eft.id IS NOT NULL THEN 'DISABLED'
                     WHEN eft.id IS NOT NULL THEN 'REGISTERED'
                     ELSE 'NOT_REGISTERED'
-                END as face_status,
-                CASE
-                    WHEN e.pin_hash IS NOT NULL AND e.pin_hash != '' THEN 1
-                    ELSE 0
-                END as pin_configured
+                END as face_status
             ")
             ->join('employee_face_templates eft', 'eft.employee_id = e.id', 'left')
             ->where('e.id', $id);
 
         $result = $builder->get()->getRowArray();
-        if ($result) {
-            $result['pin_configured'] = !empty($result['pin_hash']);
-            unset($result['pin_hash']);
-        }
         return $result ?: null;
     }
 
@@ -123,6 +116,7 @@ class EmployeeModel extends Model
                 e.id,
                 e.employee_id,
                 e.full_name,
+                e.gender,
                 e.department,
                 e.designation,
                 e.joining_date,
@@ -137,11 +131,7 @@ class EmployeeModel extends Model
                     WHEN e.status = 'INACTIVE' AND eft.id IS NOT NULL THEN 'DISABLED'
                     WHEN eft.id IS NOT NULL THEN 'REGISTERED'
                     ELSE 'NOT_REGISTERED'
-                END as face_status,
-                CASE
-                    WHEN e.pin_hash IS NOT NULL AND e.pin_hash != '' THEN 1
-                    ELSE 0
-                END as pin_configured
+                END as face_status
             ")
             ->join('employee_face_templates eft', 'eft.employee_id = e.id', 'left');
 
@@ -227,25 +217,7 @@ class EmployeeModel extends Model
     }
 
     /**
-     * Safely updates an employee's six-digit PIN using standard bcrypt hashing.
-     * Never stores raw PIN values.
-     */
-    public function setEmployeePin(string $id, string $rawPin): bool
-    {
-        if (!preg_match('/^\d{6}$/', $rawPin)) {
-            return false;
-        }
-
-        $hash = password_hash($rawPin, PASSWORD_BCRYPT);
-        return $this->update($id, [
-            'pin_hash'   => $hash,
-            'updated_at' => date('Y-m-d H:i:s'),
-        ]);
-    }
-
-    /**
-     * Verifies an employee's PIN against their stored bcrypt hash.
-     * Returns sanitized employee array (without pin_hash) on success, null on failure.
+     * Verifies an employee's PIN against their stored bcrypt hash for API integration compatibility.
      */
     public function verifyEmployeePin(string $employeeIdOrCode, string $rawPin): ?array
     {
@@ -266,7 +238,6 @@ class EmployeeModel extends Model
         }
 
         unset($employee['pin_hash']);
-        $employee['pin_configured'] = true;
         return $employee;
     }
 }

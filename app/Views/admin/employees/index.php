@@ -232,11 +232,11 @@
                         <tr>
                             <th>Employee ID</th>
                             <th>Full Name</th>
+                            <th>Gender</th>
                             <th>Department & Designation</th>
                             <th>Joining Date</th>
                             <th>Contact</th>
                             <th>Biometric Status</th>
-                            <th>PIN Fallback</th>
                             <th>Employment Status</th>
                             <?php if ($canManage): ?>
                                 <th style="text-align: right;">Actions</th>
@@ -275,6 +275,16 @@
                                         <div style="font-weight: 700; color: var(--gray-900);"><?= esc($emp['full_name']) ?></div>
                                     </td>
                                     <td>
+                                        <?php 
+                                            $g = strtoupper($emp['gender'] ?? 'MALE');
+                                            $isFem = ($g === 'FEMALE');
+                                            $isMale = ($g === 'MALE');
+                                        ?>
+                                        <span class="badge" style="<?= $isFem ? 'background:#fce7f3; color:#9d174d; border:1px solid #fbcfe8;' : ($isMale ? 'background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd;' : 'background:#f3f4f6; color:#374151;') ?>">
+                                            <?= esc($g) ?>
+                                        </span>
+                                    </td>
+                                    <td>
                                         <div style="font-weight: 600; color: var(--gray-800);"><?= esc($emp['department'] ?? 'General') ?></div>
                                         <div class="text-muted"><?= esc($emp['designation'] ?? 'Staff') ?></div>
                                     </td>
@@ -304,13 +314,6 @@
                                         <?php endif; ?>
                                     </td>
                                     <td>
-                                        <?php if (!empty($emp['pin_configured'])): ?>
-                                            <span class="badge badge-success" title="Six-digit numeric PIN configured">&#10003; PIN Set</span>
-                                        <?php else: ?>
-                                            <span class="badge" style="background-color: var(--gray-200); color: var(--gray-600);" title="No PIN configured">No PIN</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
                                         <?php if ($emp['status'] === 'ACTIVE'): ?>
                                             <span class="badge badge-success">Active</span>
                                         <?php else: ?>
@@ -327,6 +330,7 @@
                                                     data-id="<?= esc($emp['id']) ?>"
                                                     data-empid="<?= esc($emp['employee_id']) ?>"
                                                     data-name="<?= esc($emp['full_name']) ?>"
+                                                    data-gender="<?= esc($emp['gender'] ?? 'MALE') ?>"
                                                     data-dept="<?= esc($emp['department'] ?? '') ?>"
                                                     data-desig="<?= esc($emp['designation'] ?? '') ?>"
                                                     data-joining="<?= esc($emp['joining_date'] ?? '') ?>"
@@ -338,22 +342,6 @@
                                                         <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
                                                     </svg>
                                                     <span>Edit</span>
-                                                </button>
-
-                                                <button
-                                                    type="button"
-                                                    class="btn btn-secondary btn-xs btn-open-pin"
-                                                    title="<?= !empty($emp['pin_configured']) ? 'Reset Employee PIN' : 'Assign Employee PIN' ?>"
-                                                    data-id="<?= esc($emp['id']) ?>"
-                                                    data-empid="<?= esc($emp['employee_id']) ?>"
-                                                    data-name="<?= esc($emp['full_name']) ?>"
-                                                    data-configured="<?= !empty($emp['pin_configured']) ? '1' : '0' ?>"
-                                                >
-                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                                                    </svg>
-                                                    <span><?= !empty($emp['pin_configured']) ? 'Reset PIN' : 'Set PIN' ?></span>
                                                 </button>
 
                                                 <button
@@ -468,18 +456,29 @@
                             <span class="text-muted" style="margin-top: 0.25rem; display: block;">Unique identifier (alphanumeric, dashes, underscores).</span>
                         </div>
 
-                        <div class="form-group">
-                            <label class="form-label" for="add_full_name">Full Name <span style="color: var(--danger);">*</span></label>
-                            <input
-                                type="text"
-                                name="full_name"
-                                id="add_full_name"
-                                class="form-input"
-                                placeholder="e.g. Eleanor Vance"
-                                required
-                                maxlength="128"
-                                autocomplete="off"
-                            >
+                        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 0.75rem;">
+                            <div class="form-group">
+                                <label class="form-label" for="add_full_name">Full Name <span style="color: var(--danger);">*</span></label>
+                                <input
+                                    type="text"
+                                    name="full_name"
+                                    id="add_full_name"
+                                    class="form-input"
+                                    placeholder="e.g. Eleanor Vance"
+                                    required
+                                    maxlength="128"
+                                    autocomplete="off"
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="add_gender">Gender <span style="color: var(--danger);">*</span></label>
+                                <select name="gender" id="add_gender" class="form-select" required>
+                                    <option value="MALE" selected>Male</option>
+                                    <option value="FEMALE">Female</option>
+                                    <option value="OTHER">Other</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
@@ -571,16 +570,27 @@
                             >
                         </div>
 
-                        <div class="form-group">
-                            <label class="form-label" for="edit_full_name">Full Name <span style="color: var(--danger);">*</span></label>
-                            <input
-                                type="text"
-                                name="full_name"
-                                id="edit_full_name"
-                                class="form-input"
-                                required
-                                maxlength="128"
-                            >
+                        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 0.75rem;">
+                            <div class="form-group">
+                                <label class="form-label" for="edit_full_name">Full Name <span style="color: var(--danger);">*</span></label>
+                                <input
+                                    type="text"
+                                    name="full_name"
+                                    id="edit_full_name"
+                                    class="form-input"
+                                    required
+                                    maxlength="128"
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="edit_gender">Gender <span style="color: var(--danger);">*</span></label>
+                                <select name="gender" id="edit_gender" class="form-select" required>
+                                    <option value="MALE">Male</option>
+                                    <option value="FEMALE">Female</option>
+                                    <option value="OTHER">Other</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
@@ -676,65 +686,6 @@
             </div>
         </div>
 
-        <!-- Modal 4: Assign / Reset Employee PIN -->
-        <div class="modal-overlay" id="pinModal">
-            <div class="modal-dialog">
-                <div class="modal-header">
-                    <h3 id="pin-modal-title">Configure Employee PIN</h3>
-                    <button type="button" class="modal-close-btn" onclick="closeModal('pinModal')">&times;</button>
-                </div>
-                <form action="" method="POST" id="form-set-pin">
-                    <?= csrf_field() ?>
-                    <div class="modal-body">
-                        <div style="background-color: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius-sm); padding: 0.75rem 1rem; margin-bottom: 1.25rem;">
-                            <div style="font-size: 0.8rem; color: var(--gray-500); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">Staff Member</div>
-                            <div style="font-size: 1rem; font-weight: 700; color: var(--gray-900);" id="pin-modal-emp-name">&mdash;</div>
-                            <div style="font-size: 0.8rem; color: var(--gray-600); margin-top: 0.2rem;" id="pin-modal-current-status">No PIN currently configured</div>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label" for="employee_pin">Six-Digit Numeric PIN <span style="color: var(--danger);">*</span></label>
-                            <input
-                                type="password"
-                                name="pin"
-                                id="employee_pin"
-                                class="form-input"
-                                inputmode="numeric"
-                                pattern="[0-9]{6}"
-                                maxlength="6"
-                                placeholder="e.g. 123456"
-                                required
-                                autocomplete="new-password"
-                                style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; letter-spacing: 0.25em; font-size: 1.1rem;"
-                            >
-                            <div style="font-size: 0.75rem; color: var(--gray-500); margin-top: 0.25rem;">Must be exactly 6 digits (0–9). Encrypted with bcrypt.</div>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label" for="employee_pin_confirm">Confirm Six-Digit PIN <span style="color: var(--danger);">*</span></label>
-                            <input
-                                type="password"
-                                name="pin_confirm"
-                                id="employee_pin_confirm"
-                                class="form-input"
-                                inputmode="numeric"
-                                pattern="[0-9]{6}"
-                                maxlength="6"
-                                placeholder="Re-enter 6-digit PIN"
-                                required
-                                autocomplete="new-password"
-                                style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; letter-spacing: 0.25em; font-size: 1.1rem;"
-                            >
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" onclick="closeModal('pinModal')">Cancel</button>
-                        <button type="submit" class="btn btn-primary" id="pin-modal-submit-btn">Save PIN</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
         <!-- Modal 5: Face Biometric Enrollment Modal (ADMIN Only) -->
         <div class="modal-overlay" id="faceEnrollModal">
             <div class="modal-dialog" style="max-width: 580px;">
@@ -773,10 +724,29 @@
 
                     <!-- Live Camera Feed View -->
                     <div id="enroll-camera-view" style="display: block;">
-                        <div style="position: relative; width: 100%; aspect-ratio: 4/3; background: #000; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; padding: 0.45rem 0.75rem; background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 8px;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; user-select: none; font-size: 0.85rem; font-weight: 600; color: var(--gray-800); margin: 0;">
+                                <input type="checkbox" id="enroll-auto-capture-toggle" checked style="accent-color: #0284c7; width: 17px; height: 17px; cursor: pointer;">
+                                <span>⚡ Smart Auto-Capture (Hands-Free)</span>
+                            </label>
+                            <span id="enroll-scan-badge" style="padding: 0.2rem 0.55rem; border-radius: 9999px; font-size: 0.72rem; font-weight: 700; background: #e0f2fe; color: #0369a1;">Ready</span>
+                        </div>
+
+                        <div style="position: relative; width: 100%; aspect-ratio: 4/3; background: #0b0f19; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
                             <video id="enroll-video" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);"></video>
                             <canvas id="enroll-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform: scaleX(-1); pointer-events: none;"></canvas>
-                            <div id="enroll-reticle" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 55%; height: 70%; border: 2px dashed rgba(56, 189, 248, 0.6); border-radius: 50%; pointer-events: none;"></div>
+                            <div id="enroll-reticle" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 55%; height: 72%; border: 2px dashed rgba(56, 189, 248, 0.7); border-radius: 50%; pointer-events: none; transition: border 0.2s, box-shadow 0.2s;"></div>
+
+                            <!-- Auto-capture countdown overlay / progress bar -->
+                            <div id="enroll-progress-wrap" style="position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); width: 75%; background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(6px); padding: 8px 14px; border-radius: 20px; display: none; align-items: center; gap: 10px; z-index: 10; border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 4px 12px rgba(0,0,0,0.4);">
+                                <div style="flex: 1; height: 7px; background: rgba(255, 255, 255, 0.2); border-radius: 4px; overflow: hidden;">
+                                    <div id="enroll-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #10b981, #22c55e); transition: width 0.08s ease-out;"></div>
+                                </div>
+                                <span id="enroll-progress-text" style="color: #fff; font-size: 0.75rem; font-weight: 700; white-space: nowrap; min-width: 90px; text-align: right;">Holding: 0%</span>
+                            </div>
+
+                            <!-- Shutter flash animation layer -->
+                            <div id="enroll-flash" style="position: absolute; inset: 0; background: #ffffff; opacity: 0; pointer-events: none; transition: opacity 0.15s ease-out; z-index: 20;"></div>
                         </div>
                     </div>
 
@@ -842,8 +812,12 @@
         let isCameraActive = false;
         let enrollAnimFrame = null;
         let lastDetectedDescriptor = null;
+        let lastDetectedQualityScore = 0.95;
         let faceApiModelsLoaded = false;
         let currentEnrollMode = 'camera';
+        let stableStartTime = null;
+        let isAutoCapturing = false;
+        const STABLE_HOLD_MS = 1200; // 1.2s continuous steady perfect scan
 
         function openAddModal() {
             const modal = document.getElementById('addModal');
@@ -860,6 +834,7 @@
                 form.action = '/admin/employees/' + encodeURIComponent(emp.id) + '/update';
                 document.getElementById('edit_employee_id').value = emp.employee_id || '';
                 document.getElementById('edit_full_name').value = emp.full_name || '';
+                document.getElementById('edit_gender').value = (emp.gender || 'MALE').toUpperCase();
                 document.getElementById('edit_department').value = emp.department || '';
                 document.getElementById('edit_designation').value = emp.designation || '';
                 document.getElementById('edit_joining_date').value = emp.joining_date || '';
@@ -901,34 +876,6 @@
             }
         }
 
-        function openPinModal(id, empId, name, isConfigured) {
-            const modal = document.getElementById('pinModal');
-            const form = document.getElementById('form-set-pin');
-            const titleEl = document.getElementById('pin-modal-title');
-            const nameEl = document.getElementById('pin-modal-emp-name');
-            const statusEl = document.getElementById('pin-modal-current-status');
-            const btnEl = document.getElementById('pin-modal-submit-btn');
-
-            if (modal && form) {
-                form.action = '/admin/employees/' + encodeURIComponent(id) + '/pin';
-                nameEl.textContent = name + ' (' + empId + ')';
-                document.getElementById('employee_pin').value = '';
-                document.getElementById('employee_pin_confirm').value = '';
-
-                if (isConfigured) {
-                    titleEl.textContent = 'Reset Employee PIN';
-                    statusEl.textContent = 'Active 6-digit PIN configured. Entering a new PIN will overwrite it.';
-                    btnEl.textContent = 'Update & Reset PIN';
-                } else {
-                    titleEl.textContent = 'Assign Employee PIN';
-                    statusEl.textContent = 'No PIN currently configured. Staff member cannot use PIN fallback.';
-                    btnEl.textContent = 'Assign PIN';
-                }
-
-                modal.classList.add('active');
-                setTimeout(() => document.getElementById('employee_pin')?.focus(), 50);
-            }
-        }
 
         function closeModal(modalId) {
             const modal = document.getElementById(modalId);
@@ -946,6 +893,9 @@
             currentEnrollEmpCode = empCode;
             currentEnrollName = fullName;
             lastDetectedDescriptor = null;
+            lastDetectedQualityScore = 0.95;
+            isAutoCapturing = false;
+            stableStartTime = null;
 
             const modal = document.getElementById('faceEnrollModal');
             const titleEl = document.getElementById('face-modal-title');
@@ -954,6 +904,7 @@
 
             if (!modal) return;
 
+            resetAutoCaptureState();
             titleEl.textContent = 'Enroll Staff Face Template';
             subEl.textContent = `${fullName} (${empCode})`;
             saveBtn.disabled = true;
@@ -970,6 +921,10 @@
 
         function closeFaceEnrollModal() {
             stopEnrollCamera();
+            isAutoCapturing = false;
+            stableStartTime = null;
+            resetAutoCaptureState();
+
             const modal = document.getElementById('faceEnrollModal');
             if (modal) modal.classList.remove('active');
 
@@ -1087,6 +1042,9 @@
 
         function stopEnrollCamera() {
             isCameraActive = false;
+            isAutoCapturing = false;
+            stableStartTime = null;
+            resetAutoCaptureState();
             if (enrollAnimFrame) {
                 cancelAnimationFrame(enrollAnimFrame);
                 enrollAnimFrame = null;
@@ -1104,15 +1062,187 @@
             }
         }
 
+        function playShutterSound() {
+            try {
+                const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtxClass) return;
+                const ctx = new AudioCtxClass();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.15);
+            } catch (e) {
+                // AudioContext restrictions gracefully handled
+            }
+        }
+
+        function resetAutoCaptureState() {
+            stableStartTime = null;
+            const progressWrap = document.getElementById('enroll-progress-wrap');
+            const progressBar = document.getElementById('enroll-progress-bar');
+            if (progressWrap) progressWrap.style.display = 'none';
+            if (progressBar) progressBar.style.width = '0%';
+            const reticle = document.getElementById('enroll-reticle');
+            if (reticle) {
+                reticle.style.border = '2px dashed rgba(56, 189, 248, 0.7)';
+                reticle.style.boxShadow = 'none';
+            }
+            const badge = document.getElementById('enroll-scan-badge');
+            if (badge) {
+                badge.textContent = 'Scanning';
+                badge.style.background = '#e0f2fe';
+                badge.style.color = '#0369a1';
+            }
+        }
+
+        function evaluateFaceQuality(detection, videoWidth, videoHeight) {
+            if (!detection) {
+                return { isPerfect: false, score: 0, reason: 'none', message: 'Position face clearly within the oval frame...' };
+            }
+
+            const box = detection.detection.box;
+            const score = detection.detection.score;
+            const scorePct = Math.round(score * 100);
+
+            // 1. Mandatory Confidence Score (System standard >= 85%)
+            if (score < 0.85) {
+                return {
+                    isPerfect: false,
+                    score: scorePct,
+                    reason: 'low_score',
+                    message: `Facial confidence (${scorePct}%) below mandatory 85% requirement. Face the light clearly.`
+                };
+            }
+
+            // 2. Scale / Distance to camera
+            const minWidth = videoWidth * 0.20;
+            const maxWidth = videoWidth * 0.70;
+            if (box.width < minWidth) {
+                return {
+                    isPerfect: false,
+                    score: scorePct,
+                    reason: 'too_far',
+                    message: 'Move closer to the camera'
+                };
+            }
+            if (box.width > maxWidth) {
+                return {
+                    isPerfect: false,
+                    score: scorePct,
+                    reason: 'too_close',
+                    message: 'Move back slightly from the camera'
+                };
+            }
+
+            // 3. Centering inside oval frame
+            const faceCenterX = box.x + box.width / 2;
+            const faceCenterY = box.y + box.height / 2;
+            const frameCenterX = videoWidth / 2;
+            const frameCenterY = videoHeight / 2;
+
+            const offsetX = Math.abs(faceCenterX - frameCenterX) / frameCenterX;
+            const offsetY = Math.abs(faceCenterY - frameCenterY) / frameCenterY;
+
+            if (offsetX > 0.32 || offsetY > 0.35) {
+                return {
+                    isPerfect: false,
+                    score: scorePct,
+                    reason: 'off_center',
+                    message: 'Center your face inside the oval guide'
+                };
+            }
+
+            // 4. Head tilt / roll angle check
+            if (detection.landmarks) {
+                try {
+                    const leftEye = detection.landmarks.getLeftEye();
+                    const rightEye = detection.landmarks.getRightEye();
+                    if (leftEye && rightEye && leftEye.length && rightEye.length) {
+                        const lx = leftEye.reduce((s, p) => s + p.x, 0) / leftEye.length;
+                        const ly = leftEye.reduce((s, p) => s + p.y, 0) / leftEye.length;
+                        const rx = rightEye.reduce((s, p) => s + p.x, 0) / rightEye.length;
+                        const ry = rightEye.reduce((s, p) => s + p.y, 0) / rightEye.length;
+                        const angleDeg = Math.abs(Math.atan2(ry - ly, rx - lx) * (180 / Math.PI));
+                        if (angleDeg > 18) {
+                            return {
+                                isPerfect: false,
+                                score: scorePct,
+                                reason: 'tilted',
+                                message: 'Keep head level and looking forward'
+                            };
+                        }
+                    }
+                } catch (e) {}
+            }
+
+            return {
+                isPerfect: true,
+                score: scorePct,
+                reason: 'perfect',
+                message: 'Perfect face scan! Hold still...'
+            };
+        }
+
+        function drawFaceTracking(ctx, box, landmarks, isPerfect) {
+            const { x, y, width: w, height: h } = box;
+            const len = Math.min(w, h) * 0.18;
+            const color = isPerfect ? '#22c55e' : '#f59e0b';
+
+            ctx.save();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = color;
+            ctx.lineCap = 'round';
+            ctx.shadowColor = isPerfect ? 'rgba(34, 197, 94, 0.6)' : 'rgba(245, 158, 11, 0.4)';
+            ctx.shadowBlur = 10;
+
+            // 4 Corner Brackets
+            ctx.beginPath();
+            // Top-Left
+            ctx.moveTo(x, y + len); ctx.lineTo(x, y); ctx.lineTo(x + len, y);
+            // Top-Right
+            ctx.moveTo(x + w - len, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + len);
+            // Bottom-Right
+            ctx.moveTo(x + w, y + h - len); ctx.lineTo(x + w, y + h); ctx.lineTo(x + w - len, y + h);
+            // Bottom-Left
+            ctx.moveTo(x + len, y + h); ctx.lineTo(x, y + h); ctx.lineTo(x, y + h - len);
+            ctx.stroke();
+
+            // Landmarks
+            if (landmarks && landmarks.positions) {
+                ctx.fillStyle = isPerfect ? 'rgba(34, 197, 94, 0.8)' : 'rgba(56, 189, 248, 0.7)';
+                const pts = landmarks.positions;
+                for (let i = 0; i < pts.length; i += 2) {
+                    ctx.beginPath();
+                    ctx.arc(pts[i].x, pts[i].y, 2, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            }
+            ctx.restore();
+        }
+
         function startCameraDetectionLoop() {
             const video = document.getElementById('enroll-video');
             const canvas = document.getElementById('enroll-canvas');
             const saveBtn = document.getElementById('btn-save-enrollment');
+            const reticle = document.getElementById('enroll-reticle');
+            const progressWrap = document.getElementById('enroll-progress-wrap');
+            const progressBar = document.getElementById('enroll-progress-bar');
+            const progressText = document.getElementById('enroll-progress-text');
+            const autoToggle = document.getElementById('enroll-auto-capture-toggle');
+            const scanBadge = document.getElementById('enroll-scan-badge');
+            const flashEl = document.getElementById('enroll-flash');
 
             async function frame() {
                 if (!isCameraActive || currentEnrollMode !== 'camera') return;
 
-                if (video.videoWidth > 0 && faceApiModelsLoaded) {
+                if (video.videoWidth > 0 && faceApiModelsLoaded && !isAutoCapturing) {
                     try {
                         const detection = await faceapi
                             .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
@@ -1126,21 +1256,84 @@
 
                         if (detection) {
                             lastDetectedDescriptor = detection.descriptor;
+                            lastDetectedQualityScore = detection.detection.score;
                             const box = detection.detection.box;
+                            const quality = evaluateFaceQuality(detection, video.videoWidth, video.videoHeight);
 
-                            // Draw clean tracking box on mirror canvas
-                            ctx.lineWidth = 3;
-                            ctx.strokeStyle = '#22c55e';
-                            ctx.shadowColor = 'rgba(34, 197, 94, 0.5)';
-                            ctx.shadowBlur = 8;
-                            ctx.strokeRect(box.x, box.y, box.width, box.height);
+                            // Draw visual brackets and landmarks on mirror canvas
+                            drawFaceTracking(ctx, box, detection.landmarks, quality.isPerfect);
 
-                            const qualityPercent = Math.round(detection.detection.score * 100);
-                            updateEnrollStatus('ready', `✓ Face detected (Confidence: ${qualityPercent}%) • Ready to register`);
-                            saveBtn.disabled = false;
+                            if (quality.isPerfect) {
+                                // High-confidence perfect face scan
+                                saveBtn.disabled = false;
+                                if (reticle) {
+                                    reticle.style.border = '3px solid #22c55e';
+                                    reticle.style.boxShadow = '0 0 25px rgba(34, 197, 94, 0.7), inset 0 0 15px rgba(34, 197, 94, 0.2)';
+                                }
+                                if (scanBadge) {
+                                    scanBadge.textContent = `Perfect (${quality.score}%)`;
+                                    scanBadge.style.background = '#dcfce7';
+                                    scanBadge.style.color = '#15803d';
+                                }
+
+                                // Manage continuous stability timer
+                                if (!stableStartTime) {
+                                    stableStartTime = performance.now();
+                                }
+                                const elapsed = performance.now() - stableStartTime;
+                                const progress = Math.min(100, Math.round((elapsed / STABLE_HOLD_MS) * 100));
+
+                                if (progressWrap) progressWrap.style.display = 'flex';
+                                if (progressBar) progressBar.style.width = `${progress}%`;
+                                if (progressText) progressText.textContent = `Hold still: ${progress}%`;
+
+                                updateEnrollStatus('ready', `🎯 Perfect face scan (${quality.score}%) • Hold still: ${progress}%`);
+
+                                // Auto-capture trigger on reaching 100% stable hold
+                                const isAutoEnabled = autoToggle ? autoToggle.checked : true;
+                                if (progress >= 100 && isAutoEnabled && !isAutoCapturing) {
+                                    isAutoCapturing = true;
+
+                                    // Trigger visual shutter flash
+                                    if (flashEl) {
+                                        flashEl.style.opacity = '0.9';
+                                        setTimeout(() => { flashEl.style.opacity = '0'; }, 200);
+                                    }
+
+                                    // Play audio shutter chime
+                                    playShutterSound();
+
+                                    updateEnrollStatus('ready', `✅ Perfect scan captured (${quality.score}%)! Registering template...`);
+                                    if (scanBadge) {
+                                        scanBadge.textContent = 'Captured!';
+                                        scanBadge.style.background = '#dcfce7';
+                                        scanBadge.style.color = '#15803d';
+                                    }
+
+                                    // Execute save
+                                    await saveFaceEnrollment();
+                                    return; // End frame loop after capture
+                                }
+                            } else {
+                                // Face detected but not yet perfect
+                                resetAutoCaptureState();
+                                saveBtn.disabled = (quality.score < 85);
+                                if (reticle) {
+                                    reticle.style.border = '2px dashed #f59e0b';
+                                    reticle.style.boxShadow = '0 0 15px rgba(245, 158, 11, 0.3)';
+                                }
+                                if (scanBadge) {
+                                    scanBadge.textContent = `Adjusting (${quality.score}%)`;
+                                    scanBadge.style.background = '#fef3c7';
+                                    scanBadge.style.color = '#b45309';
+                                }
+                                updateEnrollStatus('looking', quality.message);
+                            }
                         } else {
+                            // No face detected
                             lastDetectedDescriptor = null;
                             saveBtn.disabled = true;
+                            resetAutoCaptureState();
                             updateEnrollStatus('looking', 'Position face clearly within the oval frame...');
                         }
                     } catch (e) {
@@ -1148,7 +1341,7 @@
                     }
                 }
 
-                if (isCameraActive) {
+                if (isCameraActive && !isAutoCapturing) {
                     enrollAnimFrame = requestAnimationFrame(frame);
                 }
             }
@@ -1182,6 +1375,7 @@
 
                 if (detection) {
                     lastDetectedDescriptor = detection.descriptor;
+                    lastDetectedQualityScore = detection.detection.score;
                     const qualityPercent = Math.round(detection.detection.score * 100);
                     updateEnrollStatus('ready', `✓ Face recognized in photo (${qualityPercent}%) • Ready to register`);
                     saveBtn.disabled = false;
@@ -1213,7 +1407,7 @@
                     },
                     body: JSON.stringify({
                         embedding: Array.from(lastDetectedDescriptor),
-                        quality_score: 0.98,
+                        quality_score: parseFloat((lastDetectedQualityScore || 0.95).toFixed(4)),
                         model_name: 'face-api-resnet34'
                     })
                 });
@@ -1244,11 +1438,19 @@
                 } else {
                     updateEnrollStatus('error', '⚠️ Registration failed: ' + (result.message || 'Server rejected template'));
                     saveBtn.disabled = false;
+                    isAutoCapturing = false;
+                    if (isCameraActive) {
+                        startCameraDetectionLoop();
+                    }
                 }
             } catch (err) {
                 console.error('Enrollment submission error:', err);
                 updateEnrollStatus('error', 'Network error while saving biometric template.');
                 saveBtn.disabled = false;
+                isAutoCapturing = false;
+                if (isCameraActive) {
+                    startCameraDetectionLoop();
+                }
             }
         }
 
@@ -1323,6 +1525,7 @@
                     id: d.id,
                     employee_id: d.empid,
                     full_name: d.name,
+                    gender: d.gender,
                     department: d.dept,
                     designation: d.desig,
                     joining_date: d.joining,
@@ -1332,16 +1535,7 @@
                 return;
             }
 
-            // 3. Set / Reset PIN
-            const pinBtn = e.target.closest('.btn-open-pin');
-            if (pinBtn) {
-                e.preventDefault();
-                const d = pinBtn.dataset;
-                openPinModal(d.id, d.empid, d.name, d.configured === '1');
-                return;
-            }
-
-            // 4. Enroll Face
+            // 3. Enroll Face
             const faceBtn = e.target.closest('.btn-open-face');
             if (faceBtn) {
                 e.preventDefault();
@@ -1350,7 +1544,7 @@
                 return;
             }
 
-            // 5. Toggle Status
+            // 4. Toggle Status
             const statusBtn = e.target.closest('.btn-open-status');
             if (statusBtn) {
                 e.preventDefault();
@@ -1363,7 +1557,6 @@
         // Expose functions globally for maximum accessibility
         window.openAddModal = openAddModal;
         window.openEditModal = openEditModal;
-        window.openPinModal = openPinModal;
         window.openFaceEnrollModal = openFaceEnrollModal;
         window.openStatusModal = openStatusModal;
         window.closeModal = closeModal;

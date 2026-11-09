@@ -666,6 +666,11 @@ class AttendanceSyncService
                     'synchronization_source' => $syncSource,
                     'payload_hash'           => $payloadHash,
                     'processing_status'      => $processingStatus,
+                    'confidence_score'       => $punchData['confidence_score'] ?? $confidenceScore,
+                    'matching_distance'      => $punchData['matching_distance'] ?? null,
+                    'runner_up_distance'     => $punchData['runner_up_distance'] ?? null,
+                    'ambiguity_delta'        => $punchData['ambiguity_delta'] ?? null,
+                    'biometric_flag'         => $punchData['biometric_flag'] ?? 'NORMAL',
                     'notes'                  => $notes,
                     'created_at'             => $serverReceivedAt,
                 ]);

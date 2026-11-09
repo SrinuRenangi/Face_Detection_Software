@@ -108,10 +108,10 @@ class UnifiedGatewayAndScannerAccessTest extends CIUnitTestCase
 
         $result = $this->withSession($session)->get('/');
         $result->assertStatus(302);
-        $result->assertRedirectTo('/admin');
+        $result->assertRedirectTo('/admin/dashboard');
     }
 
-    // 3. Gateway auto-redirects active Manager session to /admin/employees
+    // 3. Gateway auto-redirects active Manager session to /manager/dashboard
     public function testGatewayRedirectsActiveManagerSession()
     {
         $session = [
@@ -124,7 +124,7 @@ class UnifiedGatewayAndScannerAccessTest extends CIUnitTestCase
 
         $result = $this->withSession($session)->get('/');
         $result->assertStatus(302);
-        $result->assertRedirectTo('/admin/employees');
+        $result->assertRedirectTo('/manager/dashboard');
     }
 
     // 4. GET /login renders login interface
@@ -137,7 +137,7 @@ class UnifiedGatewayAndScannerAccessTest extends CIUnitTestCase
         $result->assertSee('Password');
     }
 
-    // 5. POST /login with Admin credentials redirects to /admin
+    // 5. POST /login with Admin credentials redirects to /admin/dashboard
     public function testAdminLoginViaUnifiedLoginRouteRedirectsToAdmin()
     {
         $result = $this->postWithCsrf('/login', [
@@ -146,12 +146,12 @@ class UnifiedGatewayAndScannerAccessTest extends CIUnitTestCase
         ]);
 
         $result->assertStatus(302);
-        $result->assertRedirectTo('/admin');
+        $result->assertRedirectTo('/admin/dashboard');
         $this->assertTrue(session()->get('admin_logged_in'));
         $this->assertSame('ROLE_ADMIN', session()->get('admin_role'));
     }
 
-    // 6. POST /login with Manager credentials redirects to /admin/employees
+    // 6. POST /login with Manager credentials redirects to /manager/dashboard
     public function testManagerLoginViaUnifiedLoginRouteRedirectsToManagerLanding()
     {
         $result = $this->postWithCsrf('/login', [
@@ -160,7 +160,7 @@ class UnifiedGatewayAndScannerAccessTest extends CIUnitTestCase
         ]);
 
         $result->assertStatus(302);
-        $result->assertRedirectTo('/admin/employees');
+        $result->assertRedirectTo('/manager/dashboard');
         $this->assertTrue(session()->get('admin_logged_in'));
         $this->assertSame('ROLE_MANAGER', session()->get('admin_role'));
     }

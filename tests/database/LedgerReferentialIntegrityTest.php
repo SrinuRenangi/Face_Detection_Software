@@ -68,7 +68,7 @@ class LedgerReferentialIntegrityTest extends CIUnitTestCase
             'client_uuid'           => EmployeeModel::generateUuidV4(),
             'employee_id'           => $this->employeeId,
             'device_id'             => $this->kioskId,
-            'timestamp'             => date('Y-m-d 08:00:00'),
+            'timestamp'             => date('Y-m-d H:i:s', time() - 120),
             'device_event_sequence' => 1,
             'sync_source'           => 'DIRECT_ONLINE',
         ]);

@@ -33,6 +33,11 @@ class AttendanceEventModel extends Model
         'synchronization_source',
         'payload_hash',
         'processing_status',
+        'confidence_score',
+        'matching_distance',
+        'runner_up_distance',
+        'ambiguity_delta',
+        'biometric_flag',
         'notes',
         'created_at',
     ];

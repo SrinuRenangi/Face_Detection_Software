@@ -82,6 +82,7 @@ class EmployeeController extends BaseController
         $rules = [
             'employee_id'   => 'required|min_length[2]|max_length[32]|regex_match[/^[A-Za-z0-9\-_]+$/]|is_unique[employees.employee_id]',
             'full_name'     => 'required|min_length[2]|max_length[128]|regex_match[/^[A-Za-z0-9\s\.\'\-]+$/]',
+            'gender'        => 'permit_empty|in_list[MALE,FEMALE,OTHER]',
             'department'    => 'permit_empty|max_length[64]',
             'designation'   => 'permit_empty|max_length[64]',
             'joining_date'  => 'permit_empty|valid_date[Y-m-d]',
@@ -112,6 +113,7 @@ class EmployeeController extends BaseController
         $id = EmployeeModel::generateUuidV4();
         $employeeId = strtoupper(trim((string) $this->request->getPost('employee_id')));
         $fullName   = trim((string) $this->request->getPost('full_name'));
+        $gender     = strtoupper(trim((string) $this->request->getPost('gender'))) ?: 'MALE';
         $department = trim((string) $this->request->getPost('department')) ?: 'General';
         $designation = trim((string) $this->request->getPost('designation')) ?: 'Staff';
         $joiningDate = trim((string) $this->request->getPost('joining_date')) ?: null;
@@ -122,12 +124,12 @@ class EmployeeController extends BaseController
             'id'            => $id,
             'employee_id'   => $employeeId,
             'full_name'     => $fullName,
+            'gender'        => in_array($gender, ['MALE', 'FEMALE', 'OTHER'], true) ? $gender : 'MALE',
             'department'    => $department,
             'designation'   => $designation,
             'joining_date'  => $joiningDate,
             'contact_phone' => $contactPhone,
             'status'        => $status,
-            'pin_hash'      => null,
             'created_at'    => date('Y-m-d H:i:s'),
             'updated_at'    => date('Y-m-d H:i:s'),
         ];
@@ -191,6 +193,7 @@ class EmployeeController extends BaseController
         $rules = [
             'employee_id'   => "required|min_length[2]|max_length[32]|regex_match[/^[A-Za-z0-9\-_]+$/]|is_unique[employees.employee_id,id,{$id}]",
             'full_name'     => 'required|min_length[2]|max_length[128]|regex_match[/^[A-Za-z0-9\s\.\'\-]+$/]',
+            'gender'        => 'permit_empty|in_list[MALE,FEMALE,OTHER]',
             'department'    => 'permit_empty|max_length[64]',
             'designation'   => 'permit_empty|max_length[64]',
             'joining_date'  => 'permit_empty|valid_date[Y-m-d]',
@@ -210,6 +213,7 @@ class EmployeeController extends BaseController
 
         $newEmployeeId   = strtoupper(trim((string) $this->request->getPost('employee_id')));
         $newFullName     = trim((string) $this->request->getPost('full_name'));
+        $newGender       = strtoupper(trim((string) $this->request->getPost('gender'))) ?: ($existing['gender'] ?? 'MALE');
         $newDepartment   = trim((string) $this->request->getPost('department')) ?: 'General';
         $newDesignation  = trim((string) $this->request->getPost('designation')) ?: 'Staff';
         $newJoiningDate  = trim((string) $this->request->getPost('joining_date')) ?: null;
@@ -220,6 +224,7 @@ class EmployeeController extends BaseController
         $diff = [];
         if ($existing['employee_id'] !== $newEmployeeId)   $diff['employee_id']   = ['from' => $existing['employee_id'],   'to' => $newEmployeeId];
         if ($existing['full_name'] !== $newFullName)       $diff['full_name']     = ['from' => $existing['full_name'],     'to' => $newFullName];
+        if (($existing['gender'] ?? 'MALE') !== $newGender) $diff['gender']       = ['from' => $existing['gender'] ?? 'MALE', 'to' => $newGender];
         if ($existing['department'] !== $newDepartment)     $diff['department']    = ['from' => $existing['department'],    'to' => $newDepartment];
         if (($existing['designation'] ?? '') !== $newDesignation) $diff['designation'] = ['from' => $existing['designation'] ?? '', 'to' => $newDesignation];
         if (($existing['joining_date'] ?? null) !== $newJoiningDate) $diff['joining_date'] = ['from' => $existing['joining_date'] ?? null, 'to' => $newJoiningDate];
@@ -229,6 +234,7 @@ class EmployeeController extends BaseController
         $updateData = [
             'employee_id'   => $newEmployeeId,
             'full_name'     => $newFullName,
+            'gender'        => in_array($newGender, ['MALE', 'FEMALE', 'OTHER'], true) ? $newGender : 'MALE',
             'department'    => $newDepartment,
             'designation'   => $newDesignation,
             'joining_date'  => $newJoiningDate,
@@ -411,94 +417,6 @@ class EmployeeController extends BaseController
     }
 
     /**
-     * Assign or Reset 6-digit numeric employee PIN (ADMIN only, CSRF protected)
-     * Stores only bcrypt hash. Never logs or echoes raw PIN values.
-     */
-    public function setPin(string $id)
-    {
-        if (!$this->requireAdminRole()) {
-            if ($this->request->isAJAX()) {
-                return $this->response->setStatusCode(403)->setJSON([
-                    'status'  => 'error',
-                    'code'    => 'FORBIDDEN',
-                    'message' => 'Access denied. Only Administrators can manage employee PINs.',
-                ]);
-            }
-            return redirect()->to('/admin/employees')->with('error', 'Access denied. Only Administrators can manage employee PINs.');
-        }
-
-        $existing = $this->employeeModel->find($id);
-        if (!$existing) {
-            if ($this->request->isAJAX()) {
-                return $this->response->setStatusCode(404)->setJSON([
-                    'status'  => 'error',
-                    'message' => 'Employee record not found.',
-                ]);
-            }
-            return redirect()->to('/admin/employees')->with('error', 'Employee record not found.');
-        }
-
-        $rules = [
-            'pin'         => 'required|exact_length[6]|numeric',
-            'pin_confirm' => 'required|matches[pin]',
-        ];
-
-        $messages = [
-            'pin' => [
-                'required'     => 'A six-digit numeric PIN is required.',
-                'exact_length' => 'PIN must be exactly 6 digits.',
-                'numeric'      => 'PIN must contain only numbers (0-9).',
-            ],
-            'pin_confirm' => [
-                'required' => 'PIN confirmation is required.',
-                'matches'  => 'PIN confirmation does not match the entered PIN.',
-            ],
-        ];
-
-        if (!$this->validate($rules, $messages)) {
-            if ($this->request->isAJAX()) {
-                return $this->response->setStatusCode(422)->setJSON([
-                    'status' => 'error',
-                    'errors' => $this->validator->getErrors(),
-                ]);
-            }
-            return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
-        }
-
-        $rawPin = (string) $this->request->getPost('pin');
-        $isReset = !empty($existing['pin_hash']);
-        $action = $isReset ? 'EMPLOYEE_PIN_RESET' : 'EMPLOYEE_PIN_ASSIGNED';
-
-        $this->employeeModel->setEmployeePin($id, $rawPin);
-
-        $actor = session()->get('admin_username') ?: 'admin';
-        $this->auditModel->log(
-            $actor,
-            $action,
-            json_encode([
-                'employee_id' => $existing['employee_id'],
-                'full_name'   => $existing['full_name'],
-                'action'      => $action,
-            ]),
-            'EMPLOYEE',
-            $id
-        );
-
-        $verb = $isReset ? 'reset' : 'assigned';
-        $message = "Six-digit PIN successfully {$verb} for employee {$existing['full_name']} ({$existing['employee_id']}).";
-
-        if ($this->request->isAJAX()) {
-            return $this->response->setJSON([
-                'status'         => 'success',
-                'message'        => $message,
-                'pin_configured' => true,
-            ]);
-        }
-
-        return redirect()->to('/admin/employees')->with('success', $message);
-    }
-
-    /**
      * Enrolls or updates 128-dimensional facial vector template for an employee
      */
     public function enrollFace(string $id)
@@ -540,6 +458,7 @@ class EmployeeController extends BaseController
         $templateModel->insert([
             'id'                => $templateId,
             'employee_id'       => $id,
+            'biometric_gender'  => $employee['gender'] ?? 'MALE',
             'template_version'  => 'v1.0',
             'vector_dimensions' => 128,
             'embedding_data'    => json_encode($embedding),

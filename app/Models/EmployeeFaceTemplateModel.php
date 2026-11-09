@@ -17,6 +17,7 @@ class EmployeeFaceTemplateModel extends Model
         'employee_id',
         'template_version',
         'vector_dimensions',
+        'biometric_gender',
         'embedding_data',
         'model_name',
         'quality_score',
@@ -39,7 +40,7 @@ class EmployeeFaceTemplateModel extends Model
     public function getActiveEnrolledTemplates(): array
     {
         return $this->db->table($this->table)
-            ->select('employee_face_templates.id as template_id, employee_face_templates.employee_id, employee_face_templates.embedding_data, employee_face_templates.quality_score, employees.employee_id as employee_code, employees.full_name, employees.department, employees.status')
+            ->select('employee_face_templates.id as template_id, employee_face_templates.employee_id, employee_face_templates.biometric_gender, employee_face_templates.embedding_data, employee_face_templates.quality_score, employees.employee_id as employee_code, employees.full_name, employees.gender, employees.department, employees.status')
             ->join('employees', 'employees.id = employee_face_templates.employee_id')
             ->where('employees.status', 'ACTIVE')
             ->get()

@@ -15,11 +15,17 @@ class Home extends BaseController
 
         // 1. Automatic role-based redirect for active human administrative sessions
         if ($session->get('admin_logged_in')) {
-            $role = $session->get('admin_role');
-            if ($role === 'ROLE_MANAGER') {
-                return redirect()->to('/admin/employees');
+            $role = (string) $session->get('admin_role');
+            if (in_array($role, ['ROLE_SUPER_ADMIN', 'SUPER_ADMIN'], true)) {
+                return redirect()->to('/developer/control');
             }
-            return redirect()->to('/admin');
+            if (in_array($role, ['ROLE_MANAGER', 'MANAGER'], true)) {
+                return redirect()->to('/manager/dashboard');
+            }
+            if (in_array($role, ['ROLE_SCANNER', 'SCANNER'], true)) {
+                return redirect()->to('/scanner');
+            }
+            return redirect()->to('/admin/dashboard');
         }
 
         // 2. Database connection status check for diagnostic display

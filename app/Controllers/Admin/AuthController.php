@@ -23,11 +23,17 @@ class AuthController extends BaseController
     public function login(): string|\CodeIgniter\HTTP\RedirectResponse
     {
         if (session()->get('admin_logged_in')) {
-            $role = session()->get('admin_role');
-            if ($role === 'ROLE_MANAGER') {
-                return redirect()->to('/admin/employees');
+            $role = (string) session()->get('admin_role');
+            if (in_array($role, ['ROLE_SUPER_ADMIN', 'SUPER_ADMIN'], true)) {
+                return redirect()->to('/developer/control');
             }
-            return redirect()->to('/admin');
+            if (in_array($role, ['ROLE_MANAGER', 'MANAGER'], true)) {
+                return redirect()->to('/manager/dashboard');
+            }
+            if (in_array($role, ['ROLE_SCANNER', 'SCANNER'], true)) {
+                return redirect()->to('/scanner');
+            }
+            return redirect()->to('/admin/dashboard');
         }
 
         $db = \Config\Database::connect();
@@ -107,46 +113,24 @@ class AuthController extends BaseController
         $userIpHash = md5($ip . '_' . $normUsername);
         $globalIpHash = md5($ip);
 
-        // Defensible password verification with development fallback
+        // Strict password verification against secure Bcrypt hash (No plaintext passwords permitted in code)
         $passwordValid = false;
-        if ($user) {
-            if (password_verify($password, $user['password_hash'])) {
-                $passwordValid = true;
-            } elseif (ENVIRONMENT === 'development' || ENVIRONMENT === 'testing') {
-                $devAcceptedPasswords = [
-                    'Admin@12345',
-                    'Admin@123',
-                    'AdminPass@123',
-                    'admin123',
-                    'admin',
-                    'Manager@12345',
-                    'Manager@123',
-                    'ManagerPass@123',
-                    'manager123',
-                    'manager',
-                ];
-                if (in_array($password, $devAcceptedPasswords, true)) {
-                    $passwordValid = true;
-                    // Automatically rehash and update the database with the current password so it stays in sync
-                    $this->userModel->update($user['id'], [
-                        'password_hash' => password_hash($password, PASSWORD_BCRYPT),
-                    ]);
-                }
-            }
+        if ($user && !empty($user['password_hash'])) {
+            $passwordValid = password_verify($password, $user['password_hash']);
         }
 
         if (!$user || !$passwordValid) {
-            // Track failed attempts per user+IP and globally per IP
+            // Track failed attempts per user+IP and globally per IP (synchronized with RateLimitFilter: 5 & 15)
             $userAttempts = (int) $cache->get('login_uip_' . $userIpHash) + 1;
             $globalAttempts = (int) $cache->get('login_ip_' . $globalIpHash) + 1;
 
             $cache->save('login_uip_' . $userIpHash, $userAttempts, 900); // 15 mins
             $cache->save('login_ip_' . $globalIpHash, $globalAttempts, 900); // 15 mins
 
-            if ($userAttempts >= 10) {
+            if ($userAttempts >= 5) {
                 $cache->save('lockout_uip_' . $userIpHash, time() + 900, 900);
             }
-            if ($globalAttempts >= 30) {
+            if ($globalAttempts >= 15) {
                 $cache->save('lockout_ip_' . $globalIpHash, time() + 900, 900);
             }
 
@@ -202,7 +186,17 @@ class AuthController extends BaseController
             "Successful authentication as {$user['role']}."
         );
 
-        $redirectUrl = ($user['role'] === 'ROLE_MANAGER') ? '/admin/employees' : '/admin';
+        $role = $user['role'];
+        if (in_array($role, ['ROLE_SUPER_ADMIN', 'SUPER_ADMIN'], true)) {
+            $redirectUrl = '/developer/control';
+        } elseif (in_array($role, ['ROLE_MANAGER', 'MANAGER'], true)) {
+            $redirectUrl = '/manager/dashboard';
+        } elseif (in_array($role, ['ROLE_SCANNER', 'SCANNER'], true)) {
+            $redirectUrl = '/scanner';
+        } else {
+            $redirectUrl = '/admin/dashboard';
+        }
+
         return redirect()->to($redirectUrl)->with('success', "Welcome back, {$user['full_name']}!");
     }
 
@@ -219,9 +213,27 @@ class AuthController extends BaseController
             'Administrative session terminated.'
         );
 
+        session()->remove([
+            'admin_logged_in',
+            'admin_user_id',
+            'admin_username',
+            'admin_full_name',
+            'admin_role',
+            'kiosk_paired_device_id',
+            'kiosk_paired_device_ident',
+            'kiosk_paired_device_name',
+        ]);
         session()->destroy();
 
-        return redirect()->to('/admin/login')->with('success', 'You have been safely signed out.');
+        if (ENVIRONMENT !== 'testing' && env('CI_ENVIRONMENT') !== 'testing') {
+            session()->regenerate(true);
+        }
+
+        $response = redirect()->to('/admin/login')->with('success', 'You have been safely signed out.');
+        $response->setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0, post-check=0, pre-check=0');
+        $response->setHeader('Pragma', 'no-cache');
+        $response->setHeader('Expires', 'Thu, 01 Jan 1970 00:00:00 GMT');
+        return $response;
     }
 
     /**

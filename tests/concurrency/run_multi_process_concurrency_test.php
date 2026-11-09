@@ -528,7 +528,7 @@ class MultiProcessConcurrencyRunner
         $devId = EmployeeModel::generateUuidV4();
         $this->setupEmployeeAndDevice($empId, $devId, 'CONC-EMP-9', 'DEV-LOCK');
 
-        $punch1Time = date('Y-m-d H:i:s', time() - 7200);
+        $punch1Time = date('Y-m-d H:i:s', time() - 300);
         // Check-in punch
         $punch1 = [
             'client_uuid'            => EmployeeModel::generateUuidV4(),
@@ -544,7 +544,7 @@ class MultiProcessConcurrencyRunner
         // Configure device as EXIT_ONLY
         $this->db->table('kiosk_devices')->where('id', $devId)->update(['terminal_mode' => 'EXIT_ONLY']);
 
-        $punch2Time = date('Y-m-d H:i:s', time() - 3600);
+        $punch2Time = date('Y-m-d H:i:s', time() - 60);
         // Check-out punch
         $punch2 = [
             'client_uuid'            => EmployeeModel::generateUuidV4(),

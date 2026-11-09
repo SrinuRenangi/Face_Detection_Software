@@ -681,7 +681,6 @@ class KioskApiController extends ResourceController
             return $this->failUnauthorized('Device authorization context not established.');
         }
 
-        // Retry rate limiting per device (Max 5 failed attempts per 60 seconds)
         $cache = service('cache');
         $failKey = 'kiosk_pin_fail_' . $device->id;
         $failedAttempts = (int) $cache->get($failKey);
@@ -705,13 +704,12 @@ class KioskApiController extends ResourceController
             ]);
         }
 
-        $employeeModel = new EmployeeModel();
+        $employeeModel = new \App\Models\EmployeeModel();
         $employee = $employeeModel->verifyEmployeePin($employeeCode, $pin);
 
-        $auditModel = new AdminAuditLogModel();
+        $auditModel = new \App\Models\AdminAuditLogModel();
 
         if (!$employee) {
-            // Increment failure count
             $cache->save($failKey, $failedAttempts + 1, 60);
 
             $auditModel->log(
@@ -734,11 +732,9 @@ class KioskApiController extends ResourceController
             ]);
         }
 
-        // Verification successful: reset failed attempt counter
         $cache->delete($failKey);
 
-        // Issue single-use verification token (UUIDv4) valid for 60 seconds
-        $token = EmployeeModel::generateUuidV4();
+        $token = \App\Models\EmployeeModel::generateUuidV4();
         $cache->save('kiosk_verif_' . $token, [
             'employee_id' => $employee['id'],
             'device_id'   => $device->id,
@@ -969,6 +965,7 @@ class KioskApiController extends ResourceController
                 'employee_id'    => $t['employee_id'],
                 'employee_code'  => $t['employee_code'],
                 'employee_name'  => $t['full_name'],
+                'gender'         => strtoupper($t['gender'] ?? $t['biometric_gender'] ?? 'MALE'),
                 'department'     => $t['department'],
                 'embedding'      => $embedding,
             ];
@@ -1021,6 +1018,145 @@ class KioskApiController extends ResourceController
             ]);
         }
 
+        // 1. Mandatory Confidence Thresholds & Verification (Rule 1)
+        // Strict minimum confidence score threshold: >= 0.85 (85%)
+        $matchingDistance   = isset($json['matching_distance']) ? (float) $json['matching_distance'] : null;
+        $runnerUpDistance   = isset($json['runner_up_distance']) ? (float) $json['runner_up_distance'] : null;
+        $ambiguityDelta     = isset($json['ambiguity_delta']) ? (float) $json['ambiguity_delta'] : null;
+        $detectedGender     = isset($json['detected_gender']) ? strtoupper(trim((string) $json['detected_gender'])) : null;
+        $genderProb         = isset($json['gender_probability']) ? (float) $json['gender_probability'] : 0.0;
+        $capturedDescriptor = $json['captured_descriptor'] ?? null;
+
+        // Backward-compatibility: If matching_distance was omitted by a cached client,
+        // resolve raw (1 - distance) scale where distance <= 0.40 corresponds to confidence >= 0.60
+        if ($matchingDistance === null && $confidence >= 0.60 && $confidence < 0.85) {
+            $inferredDist = round(1.0 - $confidence, 4);
+            if ($inferredDist <= 0.40) {
+                $matchingDistance = $inferredDist;
+                $confidence = round((100 - ($inferredDist / 0.40) * 15) / 100, 4);
+            }
+        }
+
+        // If confidence provided is below strict 85% threshold (or distance exceeds 0.40)
+        if ($confidence < 0.85 && ($matchingDistance === null || $matchingDistance > 0.40)) {
+            $auditModel = new \App\Models\AdminAuditLogModel();
+            $auditModel->log(
+                'BIOMETRIC_SECURITY',
+                'FACE_CONFIDENCE_BELOW_THRESHOLD',
+                json_encode([
+                    'device_id'         => $device->id,
+                    'employee_id'       => $employee['employee_id'],
+                    'staff_name'        => $employee['full_name'],
+                    'confidence_score'  => $confidence,
+                    'matching_distance' => $matchingDistance,
+                    'min_threshold'     => 0.85,
+                ]),
+                'KIOSK_DEVICE',
+                $device->id
+            );
+
+            return $this->response->setStatusCode(422)->setJSON([
+                'status'  => 'error',
+                'code'    => 'CONFIDENCE_BELOW_THRESHOLD',
+                'message' => 'Facial match confidence score (' . round($confidence * 100) . '%) is below the mandatory 85% verification threshold. Flagged as Unrecognized Face.',
+            ]);
+        }
+
+        // 2. Strict Biometric Attribute Pre-filtering (Rule 2)
+        // Prevent cross-matching between distinct individuals (e.g. male never matches Madhavi)
+        $employeeGender = strtoupper($employee['gender'] ?? 'MALE');
+        if (!empty($detectedGender) && $genderProb >= 0.70) {
+            if ($detectedGender !== $employeeGender) {
+                $auditModel = new \App\Models\AdminAuditLogModel();
+                $auditModel->log(
+                    'BIOMETRIC_SECURITY',
+                    'BIOMETRIC_GENDER_MISMATCH',
+                    json_encode([
+                        'device_id'       => $device->id,
+                        'employee_id'     => $employee['employee_id'],
+                        'staff_name'      => $employee['full_name'],
+                        'expected_gender' => $employeeGender,
+                        'detected_gender' => $detectedGender,
+                        'probability'     => $genderProb,
+                    ]),
+                    'KIOSK_DEVICE',
+                    $device->id
+                );
+
+                return $this->response->setStatusCode(422)->setJSON([
+                    'status'  => 'error',
+                    'code'    => 'BIOMETRIC_GENDER_MISMATCH',
+                    'message' => "Biometric trait mismatch: Detected trait ({$detectedGender}) does not match registered profile traits for {$employee['full_name']} ({$employeeGender}).",
+                ]);
+            }
+        }
+
+        // 3. Server-Side Biometric Embedding Integrity Check (Rule 3)
+        $biometricFlag = 'VERIFIED_STRICT';
+        $templateModel = new \App\Models\EmployeeFaceTemplateModel();
+        $storedTemplate = $templateModel->where('employee_id', $employee['id'])->first();
+
+        if ($storedTemplate && is_array($capturedDescriptor) && count($capturedDescriptor) === 128) {
+            $enrolledVector = json_decode($storedTemplate['embedding_data'], true);
+            if (is_array($enrolledVector) && count($enrolledVector) === 128) {
+                $sumSq = 0.0;
+                for ($i = 0; $i < 128; $i++) {
+                    $diff = (float) $capturedDescriptor[$i] - (float) $enrolledVector[$i];
+                    $sumSq += $diff * $diff;
+                }
+                $serverDistance = sqrt($sumSq);
+
+                if ($serverDistance > 0.40) {
+                    $auditModel = new \App\Models\AdminAuditLogModel();
+                    $auditModel->log(
+                        'BIOMETRIC_SECURITY',
+                        'SERVER_EMBEDDING_MISMATCH',
+                        json_encode([
+                            'device_id'       => $device->id,
+                            'employee_id'     => $employee['employee_id'],
+                            'staff_name'      => $employee['full_name'],
+                            'server_distance' => round($serverDistance, 4),
+                            'max_threshold'   => 0.40,
+                        ]),
+                        'KIOSK_DEVICE',
+                        $device->id
+                    );
+
+                    return $this->response->setStatusCode(422)->setJSON([
+                        'status'  => 'error',
+                        'code'    => 'SERVER_EMBEDDING_MISMATCH',
+                        'message' => 'Server biometric verification failed (Distance: ' . round($serverDistance, 4) . ' > 0.40). Capture flagged as Unrecognized Face.',
+                    ]);
+                }
+
+                if ($matchingDistance === null) {
+                    $matchingDistance = round($serverDistance, 4);
+                }
+            }
+        }
+
+        // 4. Ambiguity Delta Validation (Rule 4)
+        if ($ambiguityDelta !== null && $ambiguityDelta < 0.08) {
+            $biometricFlag = 'AMBIGUOUS_DELTA';
+            $auditModel = new \App\Models\AdminAuditLogModel();
+            $auditModel->log(
+                'BIOMETRIC_AUDIT',
+                'AMBIGUOUS_DISTANCE_DELTA',
+                json_encode([
+                    'device_id'          => $device->id,
+                    'employee_id'        => $employee['employee_id'],
+                    'staff_name'         => $employee['full_name'],
+                    'matching_distance'  => $matchingDistance,
+                    'runner_up_distance' => $runnerUpDistance,
+                    'ambiguity_delta'    => $ambiguityDelta,
+                ]),
+                'KIOSK_DEVICE',
+                $device->id
+            );
+        } elseif ($matchingDistance !== null && $matchingDistance > 0.38) {
+            $biometricFlag = 'LOW_CONFIDENCE';
+        }
+
         // Handle optional captured photo frame
         $storedPhoto = null;
         $photoService = new \App\Services\AttendancePhotoService();
@@ -1041,14 +1177,18 @@ class KioskApiController extends ResourceController
         // Delegate to canonical AttendanceSyncService
         $syncService = new \App\Services\AttendanceSyncService();
         $syncPayload = [
-            'client_uuid'       => $clientUuid,
-            'employee_id'       => $employee['id'],
-            'device_id'         => $device->id,
-            'device_epoch_id'   => $device->device_epoch_id,
-            'terminal_mode'     => $device->terminal_mode,
-            'timestamp'         => $nowIst->format('Y-m-d H:i:s'),
-            'sync_source'       => 'DIRECT_ONLINE',
-            'confidence_score'  => $confidence ?: 0.98,
+            'client_uuid'        => $clientUuid,
+            'employee_id'        => $employee['id'],
+            'device_id'          => $device->id,
+            'device_epoch_id'    => $device->device_epoch_id,
+            'terminal_mode'      => $device->terminal_mode,
+            'timestamp'          => $nowIst->format('Y-m-d H:i:s'),
+            'sync_source'        => 'DIRECT_ONLINE',
+            'confidence_score'   => $confidence ?: 0.98,
+            'matching_distance'  => $matchingDistance,
+            'runner_up_distance' => $runnerUpDistance,
+            'ambiguity_delta'    => $ambiguityDelta,
+            'biometric_flag'     => $biometricFlag,
         ];
         if ($storedPhoto) {
             $syncPayload['photo_metadata'] = $storedPhoto;

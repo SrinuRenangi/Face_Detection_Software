@@ -32,11 +32,10 @@ $routes->group('admin', ['filter' => 'adminAuth'], static function ($routes) {
     $routes->get('dashboard', 'Admin\DashboardController::index', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN']);
 
     // Employee Management Web Interface (Read-only for Manager, Mutations restricted to Admin)
-    $routes->get('employees', 'Admin\EmployeeController::index');
+    $routes->get('employees', 'Admin\EmployeeController::index', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN,MANAGER,ROLE_MANAGER']);
     $routes->post('employees', 'Admin\EmployeeController::store', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN']);
-    $routes->get('employees/(:segment)', 'Admin\EmployeeController::show/$1');
+    $routes->get('employees/(:segment)', 'Admin\EmployeeController::show/$1', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN,MANAGER,ROLE_MANAGER']);
     $routes->post('employees/(:segment)/update', 'Admin\EmployeeController::update/$1', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN']);
-    $routes->post('employees/(:segment)/pin', 'Admin\EmployeeController::setPin/$1', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN']);
     $routes->post('employees/(:segment)/face-template', 'Admin\EmployeeController::enrollFace/$1', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN']);
     $routes->post('employees/(:segment)/toggle-status', 'Admin\EmployeeController::toggleStatus/$1', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN']);
     $routes->post('employees/(:segment)/delete', 'Admin\EmployeeController::delete/$1', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN']);
@@ -69,13 +68,34 @@ $routes->group('admin', ['filter' => 'adminAuth'], static function ($routes) {
         $routes->get('photos/(:segment)', 'Admin\AttendanceReportController::viewPhoto/$1');
         $routes->get('events/(:segment)/photo', 'Admin\AttendanceReportController::viewEventPhoto/$1');
     });
+
+    // User & Organization Settings (Accessible to Admin & Manager)
+    $routes->get('settings', 'SettingsController::index');
+    $routes->post('settings/profile', 'SettingsController::updateProfile');
+    $routes->post('settings/password', 'SettingsController::updatePassword');
+    $routes->post('settings/organization', 'SettingsController::updateOrganization');
 });
 
-// 4. Stage 3 Isolated Face Lab Shortcut (Protected: Only ADMIN)
+// Manager Role Aliases
+$routes->get('manager/dashboard', 'Admin\EmployeeController::index', ['filter' => 'adminAuth:MANAGER,ROLE_MANAGER,ADMIN,ROLE_ADMIN']);
+$routes->get('manager/settings', 'SettingsController::index', ['filter' => 'adminAuth:MANAGER,ROLE_MANAGER,ADMIN,ROLE_ADMIN']);
+
+// 4. Developer / Super-Admin Control Panel (Protected: SUPER_ADMIN Only)
+$routes->group('developer', ['filter' => 'adminAuth:SUPER_ADMIN,ROLE_SUPER_ADMIN'], static function ($routes) {
+    $routes->get('', 'DeveloperController::control');
+    $routes->get('control', 'DeveloperController::control');
+    $routes->post('kill-switch/toggle', 'DeveloperController::toggleKillSwitch');
+    $routes->post('users/(:segment)/reset-password', 'DeveloperController::resetUserPassword/$1');
+    $routes->post('users/(:segment)/toggle-status', 'DeveloperController::toggleUserStatus/$1');
+    $routes->post('self/update-credentials', 'DeveloperController::updateSelfCredentials');
+});
+
+// 5. Stage 3 Isolated Face Lab Shortcut (Protected: Only ADMIN)
 $routes->get('face-lab', 'Admin\FaceLabController::index', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN']);
 
-// 5. Attendance Kiosk Interface (Tablet-Optimized)
+// 6. Attendance Kiosk Interface (Tablet-Optimized)
 $routes->get('attendance', 'AttendanceController::index');
+$routes->get('scanner', 'AttendanceController::index');
 
 
 
@@ -106,11 +126,10 @@ $routes->group('api', static function ($routes) {
         $routes->get('stats', 'Api\AdminApiController::stats', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN']);
 
         // Employee Management API (Read-only for Manager, Mutations restricted to Admin)
-        $routes->get('employees', 'Admin\EmployeeController::index');
+        $routes->get('employees', 'Admin\EmployeeController::index', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN,MANAGER,ROLE_MANAGER']);
         $routes->post('employees', 'Admin\EmployeeController::store', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN']);
-        $routes->get('employees/(:segment)', 'Admin\EmployeeController::show/$1');
+        $routes->get('employees/(:segment)', 'Admin\EmployeeController::show/$1', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN,MANAGER,ROLE_MANAGER']);
         $routes->post('employees/(:segment)/update', 'Admin\EmployeeController::update/$1', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN']);
-        $routes->post('employees/(:segment)/pin', 'Admin\EmployeeController::setPin/$1', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN']);
         $routes->post('employees/(:segment)/face-template', 'Admin\EmployeeController::enrollFace/$1', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN']);
         $routes->post('employees/(:segment)/toggle-status', 'Admin\EmployeeController::toggleStatus/$1', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN']);
         $routes->post('employees/(:segment)/delete', 'Admin\EmployeeController::delete/$1', ['filter' => 'adminAuth:ADMIN,ROLE_ADMIN']);

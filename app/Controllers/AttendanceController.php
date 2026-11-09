@@ -74,8 +74,8 @@ class AttendanceController extends BaseController
             return redirect()->to('/kiosk/pair')->with('error', 'Scanner is not authorized. Please enter the 6-digit connection key provided by the Administrator.');
         }
 
-        // For administrators launching scanner from console or automated tests
-        if (!$currentDevice && ($isAdminOrManager || $isTesting) && !empty($registeredDevices)) {
+        // In automated testing environments, automatically bind to first fixture device
+        if (!$currentDevice && $isTesting && !empty($registeredDevices)) {
             $currentDevice = $registeredDevices[0];
             session()->set('kiosk_paired_device_id', $currentDevice['id']);
         }
@@ -88,7 +88,7 @@ class AttendanceController extends BaseController
             'pageTitle'         => 'Staff Attendance Kiosk',
             'registeredDevices' => $registeredDevices,
             'currentDevice'     => $currentDevice,
-            'isPaired'          => $isPaired || !empty($currentDevice),
+            'isPaired'          => $isPaired,
             'kioskToken'        => $rawToken,
             'serverTime'        => $nowIst->format('Y-m-d H:i:s'),
             'serverTimeIST'     => $nowIst->format('h:i:s A'),

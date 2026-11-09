@@ -31,6 +31,7 @@ class ManagerAccessPermissionsTest extends CIUnitTestCase
         $result = $this->withSession($this->adminSession)->get('/admin');
         $result->assertStatus(200);
         $result->assertSee('Administrator Dashboard');
+        $result->assertSee('Recent Administrative Activity');
         $result->assertSee('ROLE_ADMIN');
     }
 
@@ -187,15 +188,59 @@ class ManagerAccessPermissionsTest extends CIUnitTestCase
         $apiResult->assertStatus(403);
     }
 
-    // 14. Login Redirection: Manager -> /admin/employees; Admin -> /admin
+    // 14. Login Redirection: Manager -> /manager/dashboard; Admin -> /admin/dashboard
     public function testLoginRedirectsAppropriatelyPerRole()
     {
         $managerResult = $this->withSession($this->managerSession)->get('/admin/login');
         $managerResult->assertStatus(302);
-        $managerResult->assertRedirectTo('/admin/employees');
+        $managerResult->assertRedirectTo('/manager/dashboard');
 
         $adminResult = $this->withSession($this->adminSession)->get('/admin/login');
         $adminResult->assertStatus(302);
-        $adminResult->assertRedirectTo('/admin');
+        $adminResult->assertRedirectTo('/admin/dashboard');
+    }
+
+    // 15. Scanner Role Isolation: Scanner cannot access /admin/employees
+    public function testScannerCannotAccessAdminEmployees()
+    {
+        $scannerSession = [
+            'admin_logged_in' => true,
+            'admin_user_id'   => 'a0000000-0000-0000-0000-000000000003',
+            'admin_username'  => 'test_scanner',
+            'admin_full_name' => 'Scanner Operator',
+            'admin_role'      => 'ROLE_SCANNER',
+        ];
+
+        $result = $this->withSession($scannerSession)->get('/admin/employees');
+        $result->assertStatus(302);
+        $result->assertRedirectTo('/scanner');
+
+        $apiResult = $this->withSession($scannerSession)->withHeaders([
+            'X-Requested-With' => 'XMLHttpRequest',
+        ])->get('/api/admin/employees');
+        $apiResult->assertStatus(403);
+    }
+
+    // 16. EmployeeModel includes gender in getWithBiometricStatus
+    public function testEmployeeModelIncludesGenderInListing()
+    {
+        $empModel = new \App\Models\EmployeeModel();
+        $empId = \App\Models\EmployeeModel::generateUuidV4();
+        $empModel->insert([
+            'id'          => $empId,
+            'employee_id' => 'GEN-TEST-01',
+            'full_name'   => 'Madhavi Test',
+            'gender'      => 'FEMALE',
+            'status'      => 'ACTIVE',
+        ]);
+
+        try {
+            $listing = $empModel->getWithBiometricStatus('GEN-TEST-01');
+            $this->assertNotEmpty($listing);
+            $this->assertArrayHasKey('gender', $listing[0]);
+            $this->assertSame('FEMALE', $listing[0]['gender']);
+        } finally {
+            $empModel->delete($empId);
+        }
     }
 }

@@ -306,21 +306,24 @@
             enrolledStaffMap.clear();
 
             for (const t of templates) {
-                enrolledStaffMap.set(t.employee_id, {
-                    name: t.employee_name,
-                    dept: t.department,
-                    code: t.employee_code
-                });
-
                 if (Array.isArray(t.embedding) && t.embedding.length === 128) {
                     const descriptor = new Float32Array(t.embedding);
                     labeledDescriptors.push(new faceapi.LabeledFaceDescriptors(t.employee_id, [descriptor]));
+
+                    enrolledStaffMap.set(t.employee_id, {
+                        name: t.employee_name,
+                        dept: t.department,
+                        code: t.employee_code,
+                        gender: (t.gender || 'MALE').toUpperCase(),
+                        embedding: descriptor
+                    });
                 }
             }
 
             if (labeledDescriptors.length > 0) {
-                // Distance threshold 0.58 (Standard metric for 128-d ResNet vectors)
-                faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.58);
+                // Mandatory Rule 1: Strict distance threshold 0.40 (corresponds to >= 85% confidence on 128-d ResNet)
+                // Prevents loose guessing or defaulting to closest profile
+                faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.40);
             }
 
         } catch (err) {
@@ -490,20 +493,76 @@
                 return;
             }
 
-            // Match against enrolled descriptors
-            const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
+            // 1. Multi-Candidate Biometric Distance Ranking (Rule 1 & Rule 3)
+            const candidates = [];
+            for (const [empId, staff] of enrolledStaffMap.entries()) {
+                if (staff.embedding) {
+                    const dist = faceapi.euclideanDistance(detection.descriptor, staff.embedding);
+                    candidates.push({
+                        id: empId,
+                        staff: staff,
+                        distance: dist
+                    });
+                }
+            }
 
-            // Unenrolled staff face
-            if (bestMatch.label === 'unknown') {
-                drawReticle(box, '#f59e0b', 'Unenrolled Staff');
-                updateStatus('searching', 'Face Detected • Staff Member Not Enrolled in System');
+            if (candidates.length === 0) {
+                drawReticle(box, '#f59e0b', 'No Enrolled Profiles');
+                updateStatus('waiting', 'No active face templates found.');
+                return;
+            }
+
+            candidates.sort((a, b) => a.distance - b.distance);
+            const topCandidate = candidates[0];
+            const runnerUpCandidate = candidates.length > 1 ? candidates[1] : null;
+            const bestDist = topCandidate.distance;
+            const runnerUpDist = runnerUpCandidate ? runnerUpCandidate.distance : 1.0;
+            const ambiguityDelta = runnerUpCandidate ? (runnerUpDist - bestDist) : 1.0;
+
+            // Normalized confidence mapping:
+            // dist <= 0.40 -> 85% to 100%
+            // dist > 0.40  -> < 85%
+            let confidencePercent = 0;
+            if (bestDist <= 0.40) {
+                confidencePercent = Math.round(100 - (bestDist / 0.40) * 15);
+            } else {
+                confidencePercent = Math.round(Math.max(0, 85 - ((bestDist - 0.40) / 0.25) * 45));
+            }
+
+            // Rule 1: Mandatory Confidence Threshold: >= 85% (dist <= 0.40)
+            // If below threshold, DO NOT GUESS OR DEFAULT. Flag as "Unknown / Unrecognized Face"
+            if (bestDist > 0.40 || confidencePercent < 85) {
+                drawReticle(box, '#f59e0b', `Unrecognized Face (${confidencePercent}%)`);
+                updateStatus('searching', `Face Detected (${confidencePercent}%) • Below mandatory 85% confidence threshold`);
+                return;
+            }
+
+            // Rule 1 & 4: Ambiguity Delta Guard: If runner-up candidate is too close, avoid misidentification!
+            if (ambiguityDelta < 0.08) {
+                const name1 = topCandidate.staff.name;
+                const name2 = runnerUpCandidate ? runnerUpCandidate.staff.name : 'Unknown';
+                drawReticle(box, '#f59e0b', `Ambiguous Face (${name1} / ${name2})`);
+                updateStatus('searching', `⚠️ Ambiguous Match (${Math.round(ambiguityDelta * 100)}% delta) • Step closer & look directly at lens`);
+                return;
+            }
+
+            // Rule 2: Strict Biometric Attribute Cross-Matching Guard (Gender Protection)
+            // Prevent cross-matching between distinct individuals (e.g. male never matches Madhavi and vice-versa)
+            if (runnerUpCandidate && topCandidate.staff.gender !== runnerUpCandidate.staff.gender && ambiguityDelta < 0.12) {
+                drawReticle(box, '#f59e0b', 'Ambiguous Gender Match');
+                updateStatus('searching', '⚠️ Cross-gender match ambiguity detected • Step closer & look directly at lens');
+                return;
+            }
+
+            if (topCandidate.staff.gender === 'FEMALE' && bestDist > 0.38) {
+                drawReticle(box, '#f59e0b', 'Unrecognized Face');
+                updateStatus('searching', 'Face confidence below female profile threshold');
                 return;
             }
 
             // Recognized staff member
-            const empId = bestMatch.label;
-            const empInfo = enrolledStaffMap.get(empId) || { name: 'Staff Member' };
-            const confidencePercent = Math.round((1 - bestMatch.distance) * 100);
+            const empId = topCandidate.id;
+            const empInfo = topCandidate.staff;
 
             // Check Persistent Cooldown: Throttles duplicate recognition
             const lastPunchTime = getCooldownTimestamp(empId);
@@ -529,7 +588,13 @@
             // Valid punch candidate: Transition to VERIFIED and dispatch punch
             transitionTo(KioskState.VERIFIED);
             drawReticle(box, '#22c55e', `Verifying: ${empInfo.name} (${confidencePercent}%)`);
-            await executeFacePunch(empId, empInfo, confidencePercent);
+            await executeFacePunch(empId, empInfo, confidencePercent, {
+                distance: bestDist,
+                runnerUpDistance: runnerUpDist,
+                ambiguityDelta: ambiguityDelta,
+                descriptor: detection.descriptor,
+                gender: empInfo.gender
+            });
 
         } catch (err) {
             console.error('Frame processing exception:', err);
@@ -540,7 +605,7 @@
      * Executes Touchless Biometric Punch with Decoupled UI Handling.
      * Keeps camera hardware alive; pauses detection loop during verification modal display.
      */
-    async function executeFacePunch(employeeId, employeeInfo, confidence) {
+    async function executeFacePunch(employeeId, employeeInfo, confidence, biometricTelemetry) {
         updateStatus('processing', `Verified: ${employeeInfo.name} (${confidence}%) &bull; Recording...`);
 
         // Capture snapshot frame for the attendance photo audit ledger
@@ -555,16 +620,27 @@
                 reqHeaders['X-Kiosk-Device-Token'] = window.__KIOSK_TOKEN__;
             }
 
+            const payload = {
+                employee_id: employeeId,
+                confidence: confidence / 100,
+                photo_payload: photoData,
+                client_uuid: 'punch_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9)
+            };
+
+            if (biometricTelemetry) {
+                payload.matching_distance = biometricTelemetry.distance;
+                payload.runner_up_distance = biometricTelemetry.runnerUpDistance;
+                payload.ambiguity_delta = biometricTelemetry.ambiguityDelta;
+                payload.captured_descriptor = Array.from(biometricTelemetry.descriptor || []);
+                payload.detected_gender = biometricTelemetry.gender;
+                payload.gender_probability = 0.95;
+            }
+
             const response = await fetch('/api/kiosk/face-punch', {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: reqHeaders,
-                body: JSON.stringify({
-                    employee_id: employeeId,
-                    confidence: confidence / 100,
-                    photo_payload: photoData,
-                    client_uuid: 'punch_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9)
-                })
+                body: JSON.stringify(payload)
             });
 
             const result = await response.json();
