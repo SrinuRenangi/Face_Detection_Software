@@ -358,3 +358,4 @@ $initials = substr($initials, 0, 2) ?: 'A';
         }
     });
 </script>
+<script <?= csp_script_nonce() ?> src="/js/security-shield.js?v=<?= file_exists(FCPATH . 'js/security-shield.js') ? filemtime(FCPATH . 'js/security-shield.js') : time() ?>"></script>

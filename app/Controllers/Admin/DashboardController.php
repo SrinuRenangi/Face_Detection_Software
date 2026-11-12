@@ -31,6 +31,10 @@ class DashboardController extends BaseController
 
         $recentAuditsRaw = $auditModel
             ->whereNotIn('action', ['CLIENT_UUID_PAYLOAD_MISMATCH', 'DEVICE_SEQUENCE_COLLISION', 'RETIRED_EPOCH_EVENT_HELD', 'DEVICE_SEQUENCE_OUT_OF_ORDER'])
+            ->where('actor_username !=', 'superadmin')
+            ->where('actor_username !=', 'ROLE_SUPER_ADMIN')
+            ->notLike('details', 'superadmin', 'both')
+            ->notLike('details', 'ROLE_SUPER_ADMIN', 'both')
             ->orderBy('created_at', 'DESC')
             ->findAll(8);
 

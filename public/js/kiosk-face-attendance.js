@@ -533,7 +533,15 @@
             // If below threshold, DO NOT GUESS OR DEFAULT. Flag as "Unknown / Unrecognized Face"
             if (bestDist > 0.40 || confidencePercent < 85) {
                 drawReticle(box, '#f59e0b', `Unrecognized Face (${confidencePercent}%)`);
-                updateStatus('searching', `Face Detected (${confidencePercent}%) • Below mandatory 85% confidence threshold`);
+                let hint = `Face Detected (${confidencePercent}%) • Below mandatory 85% confidence threshold`;
+                if (videoElement && box.width < videoElement.videoWidth * 0.26) {
+                    hint = `Face Detected (${confidencePercent}%) • Move closer to camera lens`;
+                } else if (confidencePercent >= 60) {
+                    hint = `Face Detected (${confidencePercent}%) • Face the light & look straight at camera`;
+                } else {
+                    hint = `Face Detected (${confidencePercent}%) • Below 85% threshold • Check lighting & move closer`;
+                }
+                updateStatus('searching', hint);
                 return;
             }
 
@@ -726,12 +734,21 @@
             const pad = 6;
             const x = Math.max(0, box.x);
             const y = Math.max(textHeight + pad, box.y - 6);
+            const cx = x + (textWidth + pad * 2) / 2;
 
             ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
             ctx.fillRect(x, y - textHeight, textWidth + pad * 2, textHeight + pad);
 
+            // Canvas has CSS transform: scaleX(-1) for mirror mode.
+            // Center-align and invert horizontally around cx so text renders forward-facing and centered:
+            ctx.save();
+            ctx.translate(cx, y - pad);
+            ctx.scale(-1, 1);
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'alphabetic';
             ctx.fillStyle = color;
-            ctx.fillText(labelText, x + pad, y - pad);
+            ctx.fillText(labelText, 0, 0);
+            ctx.restore();
         }
     }
 

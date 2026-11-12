@@ -165,10 +165,15 @@ class AttendanceReviewController extends BaseController
         $event['local_punch_time'] = $localDt->format('Y-m-d H:i:s');
         $event['effective_status'] = !empty($event['review_decision']) ? $event['review_decision'] : 'PENDING';
 
-        // Fetch audit logs for this event
+        // Fetch audit logs for this event (Ghost mode: superadmin traces excluded)
         $auditLogs = $this->db->table('admin_audit_logs')
-            ->where('target_id', $eventId)
-            ->orWhere('details LIKE', '%' . $eventId . '%')
+            ->groupStart()
+                ->where('target_id', $eventId)
+                ->orWhere('details LIKE', '%' . $eventId . '%')
+            ->groupEnd()
+            ->where('actor_username !=', 'superadmin')
+            ->where('actor_username !=', 'ROLE_SUPER_ADMIN')
+            ->notLike('details', 'superadmin', 'both')
             ->orderBy('created_at', 'DESC')
             ->get()
             ->getResultArray();

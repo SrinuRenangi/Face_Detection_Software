@@ -10,9 +10,11 @@ const CACHE_NAME = 'edifies-kiosk-shell-v1.4.0';
 const PRECACHE_ASSETS = [
     '/attendance',
     '/css/style.css',
-    '/js/edifies-multidevice-kiosk.js',
+    '/js/face-api.js',
+    '/js/kiosk-face-attendance.js',
     '/js/kiosk-pin-attendance.js',
     '/js/kiosk-clock.js',
+    '/js/security-shield.js',
     '/manifest.json',
     '/favicon.ico'
 ];

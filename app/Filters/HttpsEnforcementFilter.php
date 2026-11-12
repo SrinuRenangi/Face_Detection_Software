@@ -56,6 +56,23 @@ class HttpsEnforcementFilter implements FilterInterface
         if ($isProduction && $request->isSecure()) {
             $response->setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
         }
+
+        // Global Hardened Enterprise Security Headers (>85% Security Compliance)
+        $response->setHeader('X-Frame-Options', 'SAMEORIGIN');
+        $response->setHeader('X-Content-Type-Options', 'nosniff');
+        $response->setHeader('X-Permitted-Cross-Domain-Policies', 'none');
+        $response->setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+        $response->setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=(), payment=(), usb=()');
+        $response->setHeader('X-XSS-Protection', '1; mode=block');
+
+        // Prevent browser caching and session leakage on administrative portals
+        $path = ltrim($request->getUri()->getPath(), '/');
+        if (str_starts_with($path, 'admin') || str_starts_with($path, 'developer') || str_starts_with($path, 'manager')) {
+            $response->setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0, post-check=0, pre-check=0');
+            $response->setHeader('Pragma', 'no-cache');
+            $response->setHeader('Expires', 'Thu, 01 Jan 1970 00:00:00 GMT');
+        }
+
         return $response;
     }
 }

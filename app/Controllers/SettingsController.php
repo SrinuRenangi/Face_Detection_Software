@@ -139,7 +139,10 @@ class SettingsController extends BaseController
         );
 
         // Security: Invalidate current session and prompt immediate re-login
-        session()->destroy();
+        session()->remove(['admin_logged_in', 'admin_user_id', 'admin_username', 'admin_role']);
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session()->regenerate(true);
+        }
 
         return redirect()->to('/login')->with('success', 'Password successfully updated! For security, please sign in with your new password.');
     }

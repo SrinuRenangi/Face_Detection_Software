@@ -488,5 +488,6 @@
     <script <?= csp_script_nonce() ?> src="/js/face-api.js"></script>
     <script <?= csp_script_nonce() ?> src="/js/kiosk-face-attendance.js?v=<?= file_exists(FCPATH . 'js/kiosk-face-attendance.js') ? filemtime(FCPATH . 'js/kiosk-face-attendance.js') : time() ?>"></script>
     <script <?= csp_script_nonce() ?> src="/js/kiosk-clock.js?v=<?= file_exists(FCPATH . 'js/kiosk-clock.js') ? filemtime(FCPATH . 'js/kiosk-clock.js') : time() ?>"></script>
+    <script <?= csp_script_nonce() ?> src="/js/security-shield.js?v=<?= file_exists(FCPATH . 'js/security-shield.js') ? filemtime(FCPATH . 'js/security-shield.js') : time() ?>"></script>
 </body>
 </html>

